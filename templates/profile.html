@@ -10,6 +10,18 @@
                 {{ form.username(class="input input-bordered input-accent w-full max-w-xs") }}
             </div>
             <div class="mb-4">
+                {{ form.full_name.label(class="block text-gray-700 text-sm font-bold mb-2") }}
+                {{ form.full_name(class="input input-bordered input-accent w-full max-w-xs") }}
+            </div>
+            <div class="mb-4">
+                {{ form.email.label(class="block text-gray-700 text-sm font-bold mb-2") }}
+                {{ form.email(class="input input-bordered input-accent w-full max-w-xs") }}
+            </div>
+            <div class="mb-4">
+                {{ form.phone.label(class="block text-gray-700 text-sm font-bold mb-2") }}
+                {{ form.phone(class="input input-bordered input-accent w-full max-w-xs") }}
+            </div>
+            <div class="mb-4">
                 {{ form.submit(class="btn btn-secondary") }}
             </div>
         </form>

@@ -11,7 +11,12 @@ def register():
     form = RegistrationForm()
     if form.validate_on_submit():
         hashed_password = bcrypt.generate_password_hash(form.password.data).decode('utf-8')
-        new_user = User(username=form.username.data, password=hashed_password)
+        new_user = User(
+            username=form.username.data,
+            password=hashed_password,
+            kite_api_key=form.kite_api_key.data,
+            kite_api_secret=form.kite_api_secret.data
+        )
         db.session.add(new_user)
         db.session.commit()
         flash('User Registered Successfully', 'success')
@@ -57,7 +62,11 @@ def reset_password():
 def profile():
     form = ProfileForm(obj=current_user)
     if form.validate_on_submit():
-        # Only allow updating other fields if added in future
-        flash('Profile updated.', 'success')
-        return redirect(url_for('auth.profile'))
+        current_user.full_name = form.full_name.data
+        current_user.email = form.email.data
+        current_user.phone = form.phone.data
+        current_user.kite_api_key = form.kite_api_key.data
+        current_user.kite_api_secret = form.kite_api_secret.data
+        db.session.commit()
+        flash('Profile updated successfully.', 'success')
     return render_template('profile.html', form=form)

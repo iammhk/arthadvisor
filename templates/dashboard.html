@@ -43,6 +43,14 @@
         </div>
     </div>
     
+    {% if not zerodha_connected %}
+        <div class="alert alert-warning my-6">
+            <div>
+                <span>Please connect your Zerodha account to view your live portfolio.</span>
+                <a href="{{ url_for('dashboard.connect_zerodha') }}" class="btn btn-primary ml-4">Connect Zerodha</a>
+            </div>
+        </div>
+    {% endif %}
     <!-- Stock Holdings Table -->
     <div class="card bg-base-100 shadow-xl">
         <div class="card-body">
@@ -59,12 +67,11 @@
                         </tr>
                     </thead>
                     <tbody>
-                        {% set total_investment = 1000000 %}
-                        {% for stock, data in stock_data.items() %}
-                            {% if data['current_price'] > 0 %}
-                                {% set quantity = (total_investment / 10 / data['current_price']) | round(0, 'floor') | int %}
-                                {% set avg_price = (total_investment / 10 / quantity) | round(2) %}
-                                {% set current_price = data['current_price'] | round(2) %}
+                        {% if stock_data %}
+                            {% for stock, data in stock_data.items() %}
+                                {% set quantity = data['quantity'] %}
+                                {% set avg_price = data['avg_price'] %}
+                                {% set current_price = data['current_price'] %}
                                 {% set pl = ((current_price - avg_price) * quantity) | round(2) %}
                                 <tr class="hover:bg-base-200 transition-colors duration-200">
                                     <td class="font-medium">{{ stock }}</td>
@@ -72,16 +79,13 @@
                                     <td>₹{{ "{:,.2f}".format(avg_price) }}</td>
                                     <td>₹{{ "{:,.2f}".format(current_price) }}</td>
                                     <td class="{{ 'text-success' if pl > 0 else 'text-error' }} font-bold">
-                                        ₹{{ "{:,.2f}".format(pl) }} ({{ "{:.2f}".format(pl / (avg_price * quantity) * 100) }}%)
+                                        ₹{{ "{:,.2f}".format(pl) }} ({{ "{:.2f}".format(pl / (avg_price * quantity) * 100 if avg_price * quantity else 0) }}%)
                                     </td>
                                 </tr>
-                            {% else %}
-                                <tr class="hover:bg-base-200 transition-colors duration-200">
-                                    <td class="font-medium">{{ stock }}</td>
-                                    <td colspan="4" class="text-error">Error fetching data</td>
-                                </tr>
-                            {% endif %}
-                        {% endfor %}
+                            {% endfor %}
+                        {% else %}
+                            <tr><td colspan="5" class="text-error">No holdings data available. Please connect your Zerodha account.</td></tr>
+                        {% endif %}
                     </tbody>
                 </table>
             </div>

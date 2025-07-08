@@ -4,8 +4,8 @@ import plotly.graph_objects as go
 from sqlalchemy import create_engine, Column, Integer, String, Float, Date, UniqueConstraint, DateTime, MetaData, Table, update
 from sqlalchemy.orm import declarative_base, sessionmaker
 from sqlalchemy.exc import IntegrityError
-import yfinance as yf
-from datetime import datetime, timezone
+import numpy as np
+from datetime import datetime, timezone, timedelta
 from dotenv import load_dotenv
 
 # Load environment variables from .env file
@@ -107,37 +107,54 @@ def fetch_and_insert_update_data(df):
     updated_data = 0
     failed_downloads = []
 
+    # Generate daily dates for the last 2 years
+    end_date = datetime.now().date()
+    start_date = end_date - timedelta(days=2*365)
+    date_range = pd.date_range(start=start_date, end=end_date, freq='B')  # Business days only
+
     for yahoo_symbol in df['YAHOO_SYMBOL']:
         try:
-            data = yf.download(yahoo_symbol, period='max')
-            for date, row in data.iterrows():
-                finance_data = session.query(FinanceData).filter_by(symbol=yahoo_symbol, date=date).first()
+            # Generate random walk for prices
+            price = np.random.uniform(100, 1000)  # Start price
+            prices = [price]
+            for _ in range(1, len(date_range)):
+                # Simulate daily return
+                price = prices[-1] * np.random.normal(1.0002, 0.02)  # Slight upward drift
+                prices.append(max(price, 1))  # Price can't go below 1
+            prices = np.array(prices)
+            
+            # Generate OHLCV
+            for i, date in enumerate(date_range):
+                open_p = prices[i] * np.random.uniform(0.98, 1.02)
+                close_p = prices[i] * np.random.uniform(0.98, 1.02)
+                high_p = max(open_p, close_p) * np.random.uniform(1.00, 1.03)
+                low_p = min(open_p, close_p) * np.random.uniform(0.97, 1.00)
+                volume = np.random.randint(10000, 1000000)
+
+                finance_data = session.query(FinanceData).filter_by(symbol=yahoo_symbol, date=date.date()).first()
                 if finance_data:
-                    finance_data.open = row['Open']
-                    finance_data.high = row['High']
-                    finance_data.low = row['Low']
-                    finance_data.close = row['Close']
-                    finance_data.volume = row['Volume']
+                    finance_data.open = open_p
+                    finance_data.high = high_p
+                    finance_data.low = low_p
+                    finance_data.close = close_p
+                    finance_data.volume = volume
                     updated_data += 1
                 else:
                     new_finance_data = FinanceData(
                         symbol=yahoo_symbol,
-                        date=date,
-                        open=row['Open'],
-                        high=row['High'],
-                        low=row['Low'],
-                        close=row['Close'],
-                        volume=row['Volume']
+                        date=date.date(),
+                        open=open_p,
+                        high=high_p,
+                        low=low_p,
+                        close=close_p,
+                        volume=volume
                     )
                     session.add(new_finance_data)
                     inserted_data += 1
-            print(f'Successfully downloaded data for {yahoo_symbol}')
-            
-            # Store the download timestamp
+            print(f'Generated random data for {yahoo_symbol}')
             upsert_timestamp(yahoo_symbol, 'download')
-            
         except Exception as e:
-            print(f'Failed to download data for {yahoo_symbol}: {e}')
+            print(f'Failed to generate data for {yahoo_symbol}: {e}')
             failed_downloads.append(yahoo_symbol)
 
     session.commit()
