@@ -1,5 +1,4 @@
 from flask_sqlalchemy import SQLAlchemy
-from flask_mail import Mail
 from flask_login import LoginManager
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
@@ -15,7 +14,6 @@ from training_predictions import train_all_models, make_all_predictions  # Impor
 load_dotenv()
 
 db = SQLAlchemy()
-mail = Mail()
 login_manager = LoginManager()
 limiter = Limiter(key_func=get_remote_address)
 bcrypt = Bcrypt()

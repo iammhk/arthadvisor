@@ -1,5 +1,5 @@
 from flask import Flask, render_template
-from extensions import db, mail, login_manager, limiter, bcrypt, start_scheduler
+from extensions import db, login_manager, limiter, bcrypt, start_scheduler  # removed mail
 from flask_migrate import Migrate
 from routes.auth import auth_bp
 from routes.core import core_bp
@@ -17,7 +17,7 @@ app = Flask(__name__)
 app.config.from_object('config.Config')
 
 db.init_app(app)
-mail.init_app(app)
+# mail.init_app(app)  # Removed
 login_manager.init_app(app)
 limiter.init_app(app)
 bcrypt.init_app(app)

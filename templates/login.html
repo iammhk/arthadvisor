@@ -13,8 +13,8 @@
         <form method="POST">
             {{ form.hidden_tag() }}
             <div class="mb-4">
-                {{ form.email.label(class="block text-gray-700 text-sm font-bold mb-2") }}
-                {{ form.email(class="input input-bordered input-primary w-full max-w-xs") }}
+                {{ form.username.label(class="block text-gray-700 text-sm font-bold mb-2") }}
+                {{ form.username(class="input input-bordered input-primary w-full max-w-xs") }}
             </div>
             <div class="mb-4">
                 {{ form.password.label(class="block text-gray-700 text-sm font-bold mb-2") }}
@@ -22,9 +22,6 @@
             </div>
             <div class="mb-4">
                 {{ form.submit(class="btn btn-primary") }}
-            </div>
-            <div class="mb-4">
-                <a href="{{ url_for('auth.forgot_password') }}" class="text-sm text-blue-500">Forgot Password?</a>
             </div>
         </form>
     </div>
