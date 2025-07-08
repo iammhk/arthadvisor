@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>OpenAdvisor</title>
+    <title>ArthAdvisor</title>
     <link href="https://cdn.jsdelivr.net/npm/daisyui@4.12.10/dist/full.min.css" rel="stylesheet" type="text/css" />
     <link href="{{ url_for('static', filename='styles.css') }}" rel="stylesheet" type="text/css" />
     <script src="https://cdn.tailwindcss.com/3.4.4"></script>
@@ -69,7 +69,7 @@
 <body class="bg-base-200 text-base-content flex flex-col min-h-screen">
     <header class="bg-base-300 p-4">
         <div class="container mx-auto flex justify-between">
-            <a href="/" class="text-lg font-bold gradient-text">OpenAdvisor</a>
+            <a href="/" class="text-lg font-bold gradient-text">ArthAdvisor</a>
             <div class="flex space-x-4">
                 {% if current_user.is_authenticated %}
                     <a href="/dashboard" class="btn btn-sm">Dashboard</a>
@@ -100,7 +100,7 @@
     </main>
     <footer class="bg-base-300 p-4 relative flex justify-center items-center footer-content">
         <div class="footer-text text-center">
-            <p>OpenAdvisor, &copy; copyright {{ current_year }}</p>
+            <p>ArthAdvisor, &copy; copyright {{ current_year }}</p>
         </div>
         <div class="theme-toggle-container">
             <!-- Heroicon for dark theme (Moon) -->

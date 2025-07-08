@@ -7,38 +7,62 @@
         {% for index, data in market_indices.items() %}
             <div class="flex items-center space-x-2">
                 <span class="font-bold">{{ index }}:</span>
-                <span>{{ "{:,.2f}".format(data.value) }}</span>
-                <span class="{{ 'text-success' if data.change > 0 else 'text-error' }}">
-                    {% if data.change > 0 %}
-                        ↑ {{ "{:.2f}".format(data.change) }}%
+                <span>{{ "{:,.2f}".format(data.value) if data.value is not none else "-" }}</span>
+                <span class="{% if data.change is not none and data.change > 0 %}text-success{% elif data.change is not none and data.change < 0 %}text-error{% else %}text-gray-400{% endif %}">
+                    {% if data.change is not none %}
+                        {% if data.change > 0 %}
+                            ↑ {{ "{:.2f}".format(data.change) }}%
+                        {% elif data.change < 0 %}
+                            ↓ {{ "{:.2f}".format(data.change * -1) }}%
+                        {% else %}
+                            0.00%
+                        {% endif %}
                     {% else %}
-                        ↓ {{ "{:.2f}".format(data.change * -1) }}%
+                        N/A
                     {% endif %}
                 </span>
             </div>
         {% endfor %}
     </div>
 </div>
+<!-- GPT Recommendations Ticker (Styled) -->
+<div class="gpt-ticker-card w-full flex items-center justify-center my-2">
+    <div class="gpt-ticker-inner">
+        <div id="gpt-ticker" class="gpt-ticker-text">
+            {{ gpt_ticker_text or 'GPT recommendations will appear here after you chat with ArthAdvisor below.' }}
+        </div>
+    </div>
+</div>
 
 <div class="container mx-auto mt-8 p-4">
     <h1 class="text-5xl font-bold mb-12 text-center gradient-text">Dashboard</h1>
-    
-    <div class="grid grid-cols-1 md:grid-cols-2 gap-8 mb-12">
-        <!-- Account Balance Card -->
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-8 mb-12">
+        <!-- Total Holdings Value Card -->
         <div class="card bg-gradient-to-br from-purple-500 to-indigo-600 text-white shadow-xl hover:shadow-2xl transition-shadow duration-300">
             <div class="card-body">
-                <h2 class="card-title text-2xl mb-4">Account Balance</h2>
-                <p class="text-5xl font-bold">₹{{ "{:,}".format(account_balance) }}</p>
-                <p class="text-sm opacity-75 mt-2">Updated 5 minutes ago</p>
+                <h2 class="card-title text-2xl mb-4">Total Holdings Value</h2>
+                <p class="text-5xl font-bold">₹{{ "{:,}".format(total_holdings_value|round(2)) }}</p>
+                <p class="text-sm opacity-75 mt-2">Current market value of all holdings</p>
             </div>
         </div>
-        
-        <!-- Money Made This Week Card -->
-        <div class="card bg-gradient-to-br from-green-400 to-blue-500 text-white shadow-xl hover:shadow-2xl transition-shadow duration-300">
+        <!-- Total Profit &amp; Loss Card -->
+        <div class="card {% if total_pnl < 0 %}bg-gradient-to-br from-red-500 to-red-700{% else %}bg-gradient-to-br from-green-400 to-blue-500{% endif %} text-white shadow-xl hover:shadow-2xl transition-shadow duration-300">
             <div class="card-body">
-                <h2 class="card-title text-2xl mb-4">Money Made This Week</h2>
-                <p class="text-5xl font-bold">₹{{ "{:,}".format(weekly_profit) }} <span class="text-2xl">↑</span></p>
-                <p class="text-sm opacity-75 mt-2">{{ "{:.1f}".format(weekly_profit / account_balance * 100) }}% increase from last week</p>
+                <h2 class="card-title text-2xl mb-4">Total Profit &amp; Loss</h2>
+                <p class="text-5xl font-bold">₹{{ "{:,}".format(total_pnl|round(2)) }} {% if total_pnl > 0 %}<span class="text-2xl">↑</span>{% elif total_pnl < 0 %}<span class="text-2xl">↓</span>{% endif %}</p>
+                <p class="text-sm opacity-75 mt-2">Sum of P&amp;L across all holdings</p>
+            </div>
+        </div>
+        <!-- Funds Info Card -->
+        <div class="card bg-gradient-to-br from-blue-500 to-cyan-400 text-white shadow-xl hover:shadow-2xl transition-shadow duration-300">
+            <div class="card-body">
+                <h2 class="card-title text-2xl mb-4">Available Funds</h2>
+                {% if funds_info %}
+                    <p class="text-5xl font-bold">₹{{ "{:,}".format(funds_info['available']['cash']|round(2)) }}</p>
+                    <p class="text-sm opacity-75 mt-2">Net: ₹{{ "{:,}".format(funds_info['net']|round(2)) }}</p>
+                {% else %}
+                    <p class="text-error text-lg">Not available</p>
+                {% endif %}
             </div>
         </div>
     </div>
@@ -91,6 +115,73 @@
             </div>
         </div>
     </div>
+    
+    <!-- Chat Dialog Box -->
+    <div class="card bg-base-100 shadow-xl my-8">
+        <div class="card-body">
+            <h2 class="text-2xl font-bold mb-4 gradient-text">ArthGPT</h2>
+            <div id="chat-box" class="border rounded p-4 h-64 overflow-y-auto bg-base-200 mb-4" style="min-height: 200px;"></div>
+            <div class="flex">
+                <input id="chat-input" type="text" class="input input-bordered w-full mr-2" placeholder="Ask anything...">
+                <button id="chat-send" class="btn btn-primary">Send</button>
+            </div>
+        </div>
+    </div>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/marked/12.0.1/marked.min.js"></script>
+    <script>
+    const chatBox = document.getElementById('chat-box');
+    const chatInput = document.getElementById('chat-input');
+    const chatSend = document.getElementById('chat-send');
+    const gptTicker = document.getElementById('gpt-ticker');
+    // Show GPT ticker text as first GPT message on load
+    window.addEventListener('DOMContentLoaded', function() {
+        if (gptTicker && gptTicker.textContent && gptTicker.textContent.trim() && chatBox) {
+            appendMessage('gpt', gptTicker.textContent.trim());
+        }
+    });
+    function appendMessage(sender, text) {
+        const msg = document.createElement('div');
+        msg.className = sender === 'user' ? 'text-right mb-2' : 'text-left mb-2';
+        if(sender === 'gpt') {
+            msg.innerHTML = `<span class='font-bold'>GPT:</span> <span class='prose prose-sm prose-slate'>${marked.parse(text)}</span>`;
+        } else {
+            msg.innerHTML = `<span class='font-bold'>You:</span> ${text}`;
+        }
+        chatBox.appendChild(msg);
+        chatBox.scrollTop = chatBox.scrollHeight;
+    }
+    chatSend.onclick = async function() {
+        const message = chatInput.value.trim();
+        if (!message) return;
+        appendMessage('user', message);
+        chatInput.value = '';
+        appendMessage('gpt', '<span class="italic text-gray-400">Thinking...</span>');
+        const allMsgs = chatBox.querySelectorAll('div');
+        const loadingMsg = allMsgs[allMsgs.length-1];
+        try {
+            const res = await fetch('/chat_gpt', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({message})
+            });
+            const data = await res.json();
+            loadingMsg.remove();
+            if (data.reply) {
+                appendMessage('gpt', data.reply);
+                // Update ticker with GPT reply (plain text)
+                gptTicker.textContent = data.reply.replace(/(<([^>]+)>)/gi, "");
+            } else {
+                appendMessage('gpt', '<span class="text-error">Error: ' + (data.error || 'Unknown error') + '</span>');
+            }
+        } catch (e) {
+            loadingMsg.remove();
+            appendMessage('gpt', '<span class="text-error">Network error</span>');
+        }
+    };
+    chatInput.addEventListener('keydown', function(e) {
+        if (e.key === 'Enter') chatSend.click();
+    });
+    </script>
 </div>
 
 <style>
@@ -99,6 +190,34 @@
         -webkit-background-clip: text;
         -webkit-text-fill-color: transparent;
         background-clip: text;
+    }
+    /* GPT Ticker Animation */
+    .gpt-ticker-card {
+        background-color: #f0faff;
+        border: 1px solid #0072ff;
+        border-radius: 0.375rem;
+        overflow: hidden;
+    }
+    .gpt-ticker-inner {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 0.5rem 1rem;
+        position: relative;
+        overflow: hidden;
+    }
+    .gpt-ticker-text {
+        font-size: 1.125rem;
+        font-weight: 500;
+        color: #0072ff;
+        white-space: nowrap;
+        overflow: hidden;
+        position: absolute;
+        animation: ticker 80s linear infinite;
+    }
+    @keyframes ticker {
+        0% { transform: translateX(100%); }
+        100% { transform: translateX(-100%); }
     }
 </style>
 {% endblock %}

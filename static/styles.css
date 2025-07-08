@@ -59,7 +59,44 @@ body, html {
     }
 }
 
-
+/* GPT Recommendations Ticker Styling */
+.gpt-ticker-card {
+    background: linear-gradient(90deg, #e0e7ff 0%, #f0f4ff 100%);
+    border-radius: 1.5rem;
+    box-shadow: 0 2px 12px 0 rgba(60, 60, 120, 0.08);
+    border: 1px solid #c7d2fe;
+    padding: 0.5rem 0;
+    margin-bottom: 1.5rem;
+}
+.gpt-ticker-inner {
+    overflow: hidden;
+    width: 100%;
+    position: relative;
+    height: 2.5rem;
+    display: flex;
+    align-items: center;
+}
+.gpt-ticker-text {
+    display: inline-block;
+    white-space: nowrap;
+    font-size: 1.15rem;
+    font-weight: 600;
+    color: #1e293b;
+    padding-left: 100%;
+    animation: ticker-scroll 18s linear infinite;
+    letter-spacing: 0.5px;
+}
+@keyframes ticker-scroll {
+    0% { transform: translateX(0); }
+    100% { transform: translateX(-100%); }
+}
+[data-theme="dark"] .gpt-ticker-card {
+    background: linear-gradient(90deg, #232946 0%, #1a2233 100%);
+    border: 1px solid #3b4252;
+}
+[data-theme="dark"] .gpt-ticker-text {
+    color: #e0e7ff;
+}
 
 @media (max-width: 640px) {
     .theme-toggle-container {

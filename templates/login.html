@@ -2,28 +2,32 @@
 
 {% block content %}
 <div class="flex items-center justify-center h-full">
-    <div class="text-center mt-10">
-        <!-- Logo -->
-        <img src="{{ url_for('static', filename='images/openadvisor_logo.png') }}" alt="Logo" class="mx-auto mb-4 w-32 h-32">
-
-        <!-- Login Heading -->
-        <h2 class="text-2xl font-bold mb-4">Login</h2>
-
-        <!-- Login Form -->
+    <div class="w-full max-w-md p-8 bg-base-100 rounded-lg shadow-lg mt-10">
+        <div class="flex flex-col items-center mb-6">
+            <img src="{{ url_for('static', filename='images/openadvisor_logo.png') }}" alt="ArthAdvisor Logo" class="mx-auto mb-4 w-32 h-32">
+            <h2 class="text-2xl font-bold mb-2">Login to ArthAdvisor</h2>
+        </div>
         <form method="POST">
             {{ form.hidden_tag() }}
             <div class="mb-4">
                 {{ form.username.label(class="block text-gray-700 text-sm font-bold mb-2") }}
-                {{ form.username(class="input input-bordered input-primary w-full max-w-xs") }}
+                {{ form.username(class="input input-bordered input-accent w-full") }}
             </div>
             <div class="mb-4">
                 {{ form.password.label(class="block text-gray-700 text-sm font-bold mb-2") }}
-                {{ form.password(class="input input-bordered input-primary w-full max-w-xs") }}
+                {{ form.password(class="input input-bordered input-accent w-full") }}
+            </div>
+            <div class="mb-4 flex justify-between items-center">
+                <a href="{{ url_for('auth.reset_password') }}" class="text-sm text-primary hover:underline">Forgot password?</a>
             </div>
             <div class="mb-4">
-                {{ form.submit(class="btn btn-primary") }}
+                {{ form.submit(class="btn btn-secondary w-full") }}
             </div>
         </form>
+        <div class="mt-4 text-center">
+            <span>Don't have an account?</span>
+            <a href="{{ url_for('auth.register') }}" class="text-primary hover:underline">Register</a>
+        </div>
     </div>
 </div>
 {% endblock %}

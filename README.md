@@ -1,6 +1,6 @@
-# OpenAdvisor
+# ArthAdvisor
 
-OpenAdvisor is a machine learning-based stock recommendation application developed for the FossHack 2024 hackathon. It provides a self-hostable investment platform designed for common investors, offering an easy-to-use interface for stock predictions and portfolio management.
+ArthAdvisor is a machine learning-based stock recommendation application developed for the FossHack 2024 hackathon. It provides a self-hostable investment platform designed for common investors, offering an easy-to-use interface for stock predictions and portfolio management.
 
 ## Features
 
@@ -13,7 +13,7 @@ OpenAdvisor is a machine learning-based stock recommendation application develop
 
 ## Tech Stack
 
-OpenAdvisor utilizes a modern and efficient tech stack, carefully chosen to provide a robust, scalable, and user-friendly platform. Here's a detailed breakdown of the technologies used and the reasoning behind each choice:
+ArthAdvisor utilizes a modern and efficient tech stack, carefully chosen to provide a robust, scalable, and user-friendly platform. Here's a detailed breakdown of the technologies used and the reasoning behind each choice:
 
 ### Backend
 
@@ -54,8 +54,8 @@ This tech stack is designed to provide a balance between performance, ease of de
 
 1. Clone the repository:
    ```
-   git clone https://github.com/marketcalls/openadvisor.git
-   cd openadvisor
+   git clone https://github.com/marketcalls/arthadvisor.git
+   cd arthadvisor
    ```
 
 2. Set up a virtual environment:
@@ -73,7 +73,7 @@ This tech stack is designed to provide a balance between performance, ease of de
 4. Create a `.env` file in the root directory and add the necessary environment variables:
    ```
    SECRET_KEY=your_secret_key
-   SQLALCHEMY_DATABASE_URI=sqlite:///openadvisor.db
+   SQLALCHEMY_DATABASE_URI=sqlite:///arthadvisor.db
    ```
 
 ## Running the Application
@@ -123,7 +123,7 @@ python trainings_predictions.py
 3. View the dashboard to see current stock recommendations and portfolio performance.
 4. Use the backtesting module to evaluate the strategy's historical performance.
 
-# OpenAdvisor: Future Roadmap
+# ArthAdvisor: Future Roadmap
 
 ## Immediate Roadmap Items
 
@@ -166,11 +166,11 @@ This project is licensed under the GNU General Public License v3.0 (GPL-3.0) - s
 
 ### GPL-3.0 License Notice
 
-OpenAdvisor is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
+ArthAdvisor is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
 
-OpenAdvisor is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details.
+ArthAdvisor is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details.
 
-You should have received a copy of the GNU General Public License along with OpenAdvisor. If not, see <https://www.gnu.org/licenses/>.
+You should have received a copy of the GNU General Public License along with ArthAdvisor. If not, see <https://www.gnu.org/licenses/>.
 
 ## Acknowledgments
 
@@ -182,7 +182,7 @@ You should have received a copy of the GNU General Public License along with Ope
 
 ## Team
 
-- Rajandran - Backend Developer, Database Expert, Creator of OpenAlgo & OpenAdvisor, Lead Maintainer
+- Rajandran - Backend Developer, Database Expert, Creator of OpenAlgo & ArthAdvisor, Lead Maintainer
 - Deepanshu - Frontend Engineer , 3rd Year, E.C.E, Thapar Institute of Engineering & Technology, Patiala, Punjab, Contributor
 - Aksshaya - Web Designer, Test Engineer and Content Creator, Gopal National School, 7th Grade, Bangalore, Contributor
 

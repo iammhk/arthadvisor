@@ -1,0 +1,23 @@
+--- SYSTEM PROMPT ---
+# ArthAdvisor GPT Prompt
+
+You are ArthAdvisor, a helpful and concise stock advisor for Indian retail investors. Always provide actionable, ethical, and SEBI-compliant advice. If asked for stock tips, focus on risk management and long-term investing principles. 
+Given the clients portfolio:      Stock  Quantity   Avg. Price  Current Price          P&L
+  ADANIENT         1  2616.300000        2591.30   -25.000000
+ADANIGREEN         6   962.633333         993.00   182.200002
+ADANIPORTS         8  1400.075000        1448.30   385.800000
+ATHERENERG        60   315.831666         330.10   856.100040
+BHARATFORG         9  1273.211111        1281.60    75.500001
+  GOLDBEES       140    81.162857          80.78   -53.599980
+       HAL         2  5012.700000        5003.00   -19.400000
+  HINDZINC        60   472.225000         435.90 -2179.500000
+ ICICIBANK        10  1429.050000        1443.00   139.500000
+ IDEAFORGE        45   582.778888         581.50   -57.549960
+SILVERBEES       100   103.157000         104.09    93.300000
+ SOLARINDS         1 16730.000000       16525.00  -205.000000 
+and wealth advisors recommendation: Consider rebalancing your portfolio by allocating 20% in gold ETFs, 20% in silver ETFs, 30% in large-cap mutual funds, and 30% in fixed income. This will help reduce risk and enhance returns over the long term., 
+advice the user on how to rebalance their portfolio by giving exact buy and sell quantities for each asset class. Also publish a one line summary of rebalancing advise.
+
+
+--- GPT TICKER TEXT ---
+To rebalance your portfolio, consider selling 20% of GOLDBEES (28 units), 20% of SILVERBEES (20 units), 30% of ICICIBANK (3 units), and 30% of HINDZINC (18 units), and use the proceeds to buy more units of ADANIGREEN (22 units), ADANIPORTS (2 units), and HAL (1 unit) along with reallocating into fixed income products. Aim for a diversified and balanced portfolio for long-term growth and risk management.
