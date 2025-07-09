@@ -1,13 +1,13 @@
 from flask_wtf import FlaskForm
 from wtforms import StringField, PasswordField, SubmitField
 from wtforms.validators import DataRequired, EqualTo, Email, Optional
+from flask_wtf.file import FileField, FileAllowed
 
 class RegistrationForm(FlaskForm):
     username = StringField('Username', validators=[DataRequired()])
+    phone = StringField('Phone', validators=[Optional()])
     password = PasswordField('Password', validators=[DataRequired()])
     confirm_password = PasswordField('Confirm Password', validators=[DataRequired(), EqualTo('password')])
-    kite_api_key = StringField('Kite API Key', validators=[DataRequired()])
-    kite_api_secret = StringField('Kite API Secret', validators=[DataRequired()])
     submit = SubmitField('Register')
 
 class LoginForm(FlaskForm):
@@ -26,7 +26,13 @@ class ProfileForm(FlaskForm):
     full_name = StringField('Full Name', validators=[Optional()])
     email = StringField('Email', validators=[Optional(), Email()])
     phone = StringField('Phone', validators=[Optional()])
-    kite_api_key = StringField('Kite API Key', validators=[Optional()])
-    kite_api_secret = StringField('Kite API Secret', validators=[Optional()])
+    profile_pic = FileField('Profile Picture', validators=[FileAllowed(['jpg', 'jpeg', 'png', 'gif'], 'Images only!')])
     submit = SubmitField('Update Profile')
+
+class SettingsForm(FlaskForm):
+    risk_appetite = StringField('Risk Appetite', validators=[Optional()])
+    goal_short_term = StringField('Short Term Goal', validators=[Optional()])
+    goal_medium_term = StringField('Medium Term Goal', validators=[Optional()])
+    goal_long_term = StringField('Long Term Goal', validators=[Optional()])
+    submit = SubmitField('Save Settings')
 

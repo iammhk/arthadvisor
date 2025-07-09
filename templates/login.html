@@ -4,9 +4,24 @@
 <div class="flex items-center justify-center h-full">
     <div class="w-full max-w-md p-8 bg-base-100 rounded-lg shadow-lg mt-10">
         <div class="flex flex-col items-center mb-6">
-            <img src="{{ url_for('static', filename='images/openadvisor_logo.png') }}" alt="ArthAdvisor Logo" class="mx-auto mb-4 w-32 h-32">
+            <img id="arth-login-logo" src="{{ url_for('static', filename='images/logo.png') }}" alt="ArthAdvisor Logo" class="mx-auto mb-4 w-32 h-32">
             <h2 class="text-2xl font-bold mb-2">Login to ArthAdvisor</h2>
         </div>
+        <script>
+        function setLoginLogoByTheme() {
+            const logo = document.getElementById('arth-login-logo');
+            const theme = document.documentElement.getAttribute('data-theme');
+            if (!logo) return;
+            if (theme === 'dark' || theme === 'night') {
+                logo.src = "{{ url_for('static', filename='images/logo-dark.png') }}";
+            } else {
+                logo.src = "{{ url_for('static', filename='images/logo.png') }}";
+            }
+        }
+        setLoginLogoByTheme();
+        const observer = new MutationObserver(setLoginLogoByTheme);
+        observer.observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
+        </script>
         <form method="POST">
             {{ form.hidden_tag() }}
             <div class="mb-4">

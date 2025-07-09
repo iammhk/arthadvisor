@@ -1,0 +1,40 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="container mx-auto max-w-xl mt-10">
+    <div class="card bg-base-100 shadow-xl">
+        <div class="card-body">
+            <h2 class="text-3xl font-bold mb-6 gradient-text">Settings</h2>
+            <form method="POST">
+                {{ form.hidden_tag() }}
+                <div class="mb-4">
+                    {{ form.risk_appetite.label(class="block mb-1 font-semibold") }}
+                    {{ form.risk_appetite(class="input input-bordered w-full", placeholder="Low, Medium, High") }}
+                </div>
+                <div class="mb-4">
+                    {{ form.kite_api_key.label(class="block mb-1 font-semibold") }}
+                    {{ form.kite_api_key(class="input input-bordered w-full") }}
+                </div>
+                <div class="mb-4">
+                    {{ form.kite_api_secret.label(class="block mb-1 font-semibold") }}
+                    {{ form.kite_api_secret(class="input input-bordered w-full") }}
+                </div>
+                <div class="mb-4">
+                    {{ form.goal_short_term.label(class="block mb-1 font-semibold") }}
+                    {{ form.goal_short_term(class="input input-bordered w-full", placeholder="e.g. Buy a car in 2 years") }}
+                </div>
+                <div class="mb-4">
+                    {{ form.goal_medium_term.label(class="block mb-1 font-semibold") }}
+                    {{ form.goal_medium_term(class="input input-bordered w-full", placeholder="e.g. Buy a house in 5 years") }}
+                </div>
+                <div class="mb-4">
+                    {{ form.goal_long_term.label(class="block mb-1 font-semibold") }}
+                    {{ form.goal_long_term(class="input input-bordered w-full", placeholder="e.g. Retirement savings in 20 years") }}
+                </div>
+                <div class="mt-6">
+                    {{ form.submit(class="btn btn-primary w-full") }}
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

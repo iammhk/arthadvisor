@@ -7,6 +7,7 @@ from routes.dashboard import dashboard_bp
 from routes.predictions import predictions_bp
 from routes.charts import charts_bp  
 from routes.backtest import backtest_bp
+from routes.settings import settings_bp  # new import
 from datetime import datetime
 import os
 from dotenv import load_dotenv
@@ -31,6 +32,7 @@ app.register_blueprint(dashboard_bp)
 app.register_blueprint(predictions_bp) 
 app.register_blueprint(charts_bp)  
 app.register_blueprint(backtest_bp)
+app.register_blueprint(settings_bp)  # register the settings blueprint
 
 
 @app.route('/')

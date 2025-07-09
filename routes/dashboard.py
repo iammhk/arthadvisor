@@ -70,9 +70,7 @@ def show_dashboard():
         zerodha_connected = True
         try:
             holdings = kite.holdings()
-            user_file = f"user_holdings_{current_user.username}.txt"
-            with open(user_file, "w", encoding="utf-8") as f:
-                f.write(json.dumps(holdings, indent=2))
+            # Remove writing to user_holdings_{current_user.username}.txt and .csv
             stock_rows = []
             for h in holdings:
                 stock_data[h['tradingsymbol']] = {
@@ -89,10 +87,7 @@ def show_dashboard():
                     'Current Price': h['last_price'],
                     'P&L': h.get('pnl', 0)
                 })
-            import pandas as pd
-            df = pd.DataFrame(stock_rows)
-            csv_file = f"user_holdings_{current_user.username}.csv"
-            df.to_csv(csv_file, index=False)
+            # No CSV or TXT file creation here
             # Fetch funds info
             try:
                 funds_info = kite.margins()['equity']
@@ -139,11 +134,26 @@ def show_dashboard():
             'Bank Nifty': {'value': 52000, 'change': -0.2}
         }
     # --- GPT Ticker Integration ---
-    # 1. Read portfolio CSV
-    csv_path = f'user_holdings_{current_user.username}.csv'
-    if os.path.exists(csv_path):
-        df = pd.read_csv(csv_path)
-        portfolio_str = df.to_string(index=False)
+    # 1. Get portfolio from Kite MCP server (live holdings)
+    if kite:
+        try:
+            holdings = kite.holdings()
+            if holdings:
+                df = pd.DataFrame([
+                    {
+                        'Stock': h['tradingsymbol'],
+                        'Quantity': h['quantity'],
+                        'Avg. Price': h['average_price'],
+                        'Current Price': h['last_price'],
+                        'P&L': h.get('pnl', 0)
+                    }
+                    for h in holdings
+                ])
+                portfolio_str = df.to_string(index=False)
+            else:
+                portfolio_str = "No portfolio data."
+        except Exception as e:
+            portfolio_str = f"Kite error: {e}"
     else:
         portfolio_str = "No portfolio data."
     # 2. Read latest advice

@@ -2,7 +2,7 @@
 
 {% block content %}
 <div class="text-center flex flex-col justify-center items-center h-full">
-    <img src="/static/images/logo.png" alt="ArthAdvisor Logo" class="mx-auto mb-4 w-24 h-24 md:w-32 md:h-32">
+    <img id="arth-index-logo" src="/static/images/logo.png" alt="ArthAdvisor Logo" class="mx-auto mb-4 w-24 h-24 md:w-32 md:h-32">
     <h1 class="text-5xl md:text-8xl font-bold mb-2 gradient-text">ArthAdvisor</h1>
     <p class="text-lg md:text-2xl mb-8">Innovative Insights for Better Investments</p>
     <div class="flex justify-center space-x-4 mb-8">
@@ -10,4 +10,19 @@
         <a href="/register" class="btn btn-secondary py-2 px-4 text-sm md:text-base">Register</a>
     </div>
 </div>
+<script>
+function setIndexLogoByTheme() {
+    const logo = document.getElementById('arth-index-logo');
+    const theme = document.documentElement.getAttribute('data-theme');
+    if (!logo) return;
+    if (theme === 'dark' || theme === 'night') {
+        logo.src = "/static/images/logo-dark.png";
+    } else {
+        logo.src = "/static/images/logo.png";
+    }
+}
+setIndexLogoByTheme();
+const observer = new MutationObserver(setIndexLogoByTheme);
+observer.observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
+</script>
 {% endblock %}

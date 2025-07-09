@@ -1,0 +1,17 @@
+<script>
+// Switch logo based on theme
+function setLogoByTheme() {
+    const logo = document.getElementById('arth-logo');
+    const theme = document.documentElement.getAttribute('data-theme');
+    if (!logo) return;
+    if (theme === 'dark' || theme === 'night') {
+        logo.src = "{{ url_for('static', filename='images/logo-dark.png') }}";
+    } else {
+        logo.src = "{{ url_for('static', filename='images/logo.png') }}";
+    }
+}
+setLogoByTheme();
+// Listen for theme changes (if theme.js or user toggles)
+const observer = new MutationObserver(setLogoByTheme);
+observer.observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
+</script>

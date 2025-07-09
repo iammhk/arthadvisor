@@ -11,6 +11,11 @@ class User(UserMixin, db.Model):
     kite_api_key = db.Column(db.String(100))
     kite_api_secret = db.Column(db.String(100))
     kite_access_token = db.Column(db.String(200))
+    risk_appetite = db.Column(db.String(50))  # e.g. 'Low', 'Medium', 'High'
+    goal_short_term = db.Column(db.Text)
+    goal_medium_term = db.Column(db.Text)
+    goal_long_term = db.Column(db.Text)
+    profile_pic = db.Column(db.String(256))  # Path to uploaded profile picture
     # Add more fields as needed
 
 class GPTTickerLog(db.Model):

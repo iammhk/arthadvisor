@@ -4,6 +4,12 @@
 <!-- Trading Terminal Header -->
 <div class="bg-base-300 text-base-content p-2 text-sm font-mono">
     <div class="container mx-auto flex justify-between items-center">
+        <div></div>
+        {% if not zerodha_connected %}
+        <a href="{{ url_for('dashboard.connect_zerodha') }}" class="btn btn-primary btn-sm">Connect to Kite</a>
+        {% endif %}
+    </div>
+    <div class="container mx-auto flex justify-between items-center mt-2">
         {% for index, data in market_indices.items() %}
             <div class="flex items-center space-x-2">
                 <span class="font-bold">{{ index }}:</span>

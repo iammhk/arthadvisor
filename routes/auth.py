@@ -3,6 +3,8 @@ from flask_login import login_user, logout_user, login_required, current_user
 from extensions import db, bcrypt
 from forms import RegistrationForm, LoginForm, ResetPasswordForm, ProfileForm
 from models import User
+from werkzeug.utils import secure_filename
+import os
 
 auth_bp = Blueprint('auth', __name__)
 
@@ -14,8 +16,7 @@ def register():
         new_user = User(
             username=form.username.data,
             password=hashed_password,
-            kite_api_key=form.kite_api_key.data,
-            kite_api_secret=form.kite_api_secret.data
+            phone=form.phone.data
         )
         db.session.add(new_user)
         db.session.commit()
@@ -65,8 +66,15 @@ def profile():
         current_user.full_name = form.full_name.data
         current_user.email = form.email.data
         current_user.phone = form.phone.data
-        current_user.kite_api_key = form.kite_api_key.data
-        current_user.kite_api_secret = form.kite_api_secret.data
+        # Handle profile picture upload
+        if form.profile_pic.data:
+            pic = form.profile_pic.data
+            filename = secure_filename(pic.filename)
+            upload_folder = os.path.join('static', 'images', 'profile_pics')
+            os.makedirs(upload_folder, exist_ok=True)
+            file_path = os.path.join(upload_folder, f"{current_user.username}_{filename}")
+            pic.save(file_path)
+            current_user.profile_pic = file_path.replace('static/', '')  # store relative path
         db.session.commit()
         flash('Profile updated successfully.', 'success')
     return render_template('profile.html', form=form)
