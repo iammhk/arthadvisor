@@ -38,6 +38,12 @@
             {{ gpt_ticker_text or 'GPT recommendations will appear here after you chat with ArthAdvisor below.' }}
         </div>
     </div>
+    {% if current_user.phone and gpt_ticker_text %}
+    <form id="send-whatsapp-form" method="post" action="{{ url_for('dashboard.send_ticker_whatsapp') }}" class="ml-4">
+        <input type="hidden" name="ticker_text" value="{{ gpt_ticker_text }}">
+        <button type="submit" class="btn btn-success btn-sm">Send to WhatsApp</button>
+    </form>
+    {% endif %}
 </div>
 
 <div class="container mx-auto mt-8 p-4">

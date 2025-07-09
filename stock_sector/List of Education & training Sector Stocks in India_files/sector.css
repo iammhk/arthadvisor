@@ -1,0 +1,201 @@
+body {
+    display: flex;
+    height: 100%;
+    flex-direction: column;
+    min-height: 100vh;
+}
+
+main {
+    flex: 1;
+}
+
+.sector_header {
+    display: flex;
+    padding-bottom: 20px;
+
+}
+
+.main_heading {
+    font-family: Inter;
+    font-weight: 700;
+    font-size: 32px;
+    line-height: 32px;
+    letter-spacing: 0%;
+    padding-bottom: 5px;
+    color: var(--color-font);
+}
+
+.sector_header .company_details span {
+    font-family: Inter;
+    font-weight: 600;
+    font-size: 16px;
+    line-height: 16px;
+    color: var(--color-table-header);
+}
+
+.sector_description {
+    font-size: 14px;
+    font-weight: 400;
+    padding-bottom: 20px;
+    color: var(--color-semibold-font);
+}
+
+.more_btn,
+.less_btn {
+    color: #4371C6;
+    font-size: 14px;
+    cursor: pointer;
+}
+
+/* Sector Table */
+.sector_table {
+    display: flex;
+    flex-direction: column;
+    border: 1px solid var(--color-borderline-secondary);
+    box-shadow: 0px 0px 8px 0px var(--color-box-shadow);
+    border-radius: 4px;
+}
+
+.table_body a {
+    text-decoration: none;
+}
+
+
+.table_row {
+    display: flex;
+    justify-content: space-between;
+    height: 50px;
+    align-items: center;
+    padding: 0px 20px;
+    border-bottom: 1px solid var(--color-borderline-secondary) !important;
+    color: var(--color-semibold-font);
+}
+
+.table_body .table_row:hover {
+    background-color: #F5F5F7;
+}
+
+.table_body a:last-child .table_row {
+    border-bottom: none !important;
+}
+
+.table_header {
+    color: var(--color-table-header);
+}
+
+.table_row .right {
+    display: flex;
+    width: 300px;
+}
+
+.table_row .right div {
+    display: flex;
+    flex: 1;
+    justify-content: flex-end;
+}
+
+.breadcrumb li span.bcrumb_industry {
+    color: #c3c3c3;
+}
+
+.scroll_to_top_container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.scroll_to_top {
+    display: flex;
+    padding: 20px 0px;
+    color: #387ED1;
+    font-weight: 700;
+    font-size: 14px;
+    cursor: pointer;
+}
+
+@media (max-width: 430px) {
+
+    breadcrumbs_wrapper .breadcrumb li span.bcrumb_industry {
+        width: 170px !important;
+        max-width: 170px !important;
+    }
+
+    .main_heading {
+        font-size: 24px;
+        line-height: 24px;
+    }
+
+    .sector_header {
+        padding-bottom: 15px;
+    }
+
+    .sector_header .company_details span {
+        font-size: 12px;
+    }
+
+    .sector_description {
+        font-size: 12px;
+        padding-bottom: 15px;
+    }
+
+    .more_btn,
+    .less_btn {
+        font-size: 12px;
+    }
+
+    .sector_table {
+        font-size: 10px;
+    }
+
+    .table_row {
+        padding: 9px 15px;
+        height: auto;
+    }
+
+    .table_row .left {
+        font-family: Inter;
+        font-weight: 600;
+        font-size: 10px;
+        text-transform: capitalize;
+        margin-right: 15px;
+    }
+
+    .table_row .right {
+        width: 65%;
+        color: var(--color-table-header);
+    }
+
+    .table_row .right div {
+        margin-left: 10px;
+    }
+
+    .table_row .right .market_cap {
+        flex: 7;
+    }
+
+    .table_row .right .pe {
+        flex: 3;
+    }
+
+    .table_row .right .arrow_col {
+        flex: 1;
+    }
+
+    .scroll_to_top {
+        padding: 15px 0px;
+        font-weight: 500;
+        font-size: 12px;
+    }
+
+    .sector_listing .table_row .right {
+        width: 30%;
+        color: var(--color-table-header);
+    }
+}
+
+@media (max-width: 412px) {
+    .breadcrumb li span.bcrumb_industry {
+        width: 170px !important;
+        max-width: 170px !important;
+    }
+}

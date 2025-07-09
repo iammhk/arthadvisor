@@ -51,6 +51,11 @@
         .theme-toggle-button.active {
             background: #0072FF; /* Adjusted active color */
         }
+        .logo-img { display: none; }
+        html[data-theme='light'] .logo-light { display: inline; }
+        html[data-theme='dark'] .logo-dark, html[data-theme='night'] .logo-dark { display: inline; }
+        html[data-theme='dark'] .logo-light, html[data-theme='night'] .logo-light { display: none; }
+        html[data-theme='light'] .logo-dark { display: none; }
         @media (max-width: 640px) {
             .theme-toggle-container {
                 position: static;
@@ -70,7 +75,8 @@
     <header class="bg-base-300 p-4">
         <div class="container mx-auto flex justify-between">
             <a href="/" class="flex items-center space-x-2">
-                <img id="arth-logo" src="{{ url_for('static', filename='images/logo.png') }}" alt="ArthAdvisor Logo" class="h-10 w-10" />
+                <img id="arth-logo-light" src="{{ url_for('static', filename='images/logo.png') }}" alt="ArthAdvisor Logo Light" class="h-10 w-10 logo-img logo-light" />
+                <img id="arth-logo-dark" src="{{ url_for('static', filename='images/logo-dark.png') }}" alt="ArthAdvisor Logo Dark" class="h-10 w-10 logo-img logo-dark" />
                 <span class="text-lg font-bold gradient-text">ArthAdvisor</span>
             </a>
             <div class="flex space-x-4 items-center">
@@ -144,21 +150,7 @@
     </footer>
     <script src="{{ url_for('static', filename='theme.js') }}"></script>
     <script>
-        // Switch logo based on theme
-        function setLogoByTheme() {
-            const logo = document.getElementById('arth-logo');
-            const theme = document.documentElement.getAttribute('data-theme');
-            if (!logo) return;
-            if (theme === 'dark' || theme === 'night') {
-                logo.src = "{{ url_for('static', filename='images/logo-dark.png') }}";
-            } else {
-                logo.src = "{{ url_for('static', filename='images/logo.png') }}";
-            }
-        }
-        setLogoByTheme();
-        // Listen for theme changes (if theme.js or user toggles)
-        const observer = new MutationObserver(setLogoByTheme);
-        observer.observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
+        // Remove JS logo switching, now handled by CSS
     </script>
     {% include '_logo_switcher.html' %}
 </body>

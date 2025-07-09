@@ -1,0 +1,56 @@
+var sitekey_signup = JSON.parse($("#signup_captcha_key").text());
+var formId;
+var captchaId;
+function onCaptchaLoadSignup() {
+  if (window.matchMedia("(max-width: 768px)").matches) {
+    formId = "sign_up_form_mobile";
+    captchaId = "captcha_signup_mobile"
+  } else {
+    formId = "sign_up_form_desktop";
+    captchaId = "captcha_signup_desktop"
+  }
+  gCaptchaId = grecaptcha.render(captchaId, {
+    sitekey: `${sitekey_signup}`,
+    size: "invisible",
+    callback: function (token) {
+      signupFormSubmit(token, formId); // Pass additional parameters here
+    },
+  });
+}
+
+$("body").on("click", ".sign_up_form_wrapper button[type='submit']", function (e) {
+    e.preventDefault();
+    var signUpformElement = this.closest("form");
+    signUpformElement.reportValidity();
+    if (signUpformElement.checkValidity()) {
+      grecaptcha.execute(gCaptchaId);
+    }
+  });
+  
+
+function signupFormSubmit(token, formId) {
+  var signUpformElement = document.querySelector(`#${formId}`);
+  signUpformElement.reportValidity();
+  var url = window.location.origin + "/markets/stocks/signup/";
+  if (signUpformElement.checkValidity()) {
+    var data = {
+      sender_phone_number: $(signUpformElement).find("#user_mobile").val(),
+      captcha_response: token,
+      captcha_type: "invisible",
+    };
+    $.ajax({
+      type: "POST",
+      url,
+      data: JSON.stringify(data),
+      contentType: "application/json",
+    })
+      .then(function (response) {
+        if (response.redirect_url) {
+          window.location.href = response.redirect_url;
+        }
+      })
+      .catch(function (error) {
+        console.error("Error occurred:", error);
+      });
+  }
+}

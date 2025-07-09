@@ -1,0 +1,83 @@
+var sitekey = JSON.parse($("#captcha_key").text());
+let gCaptchaIdContactUs;
+
+function onCaptchaLoad() {
+  gCaptchaIdContactUs = grecaptcha.render("captcha_contactus", {
+    sitekey: `${sitekey}`,
+    size: "invisible",
+    callback: onFormSubmit
+  });
+}
+
+function onFormSubmit(token) {
+  $(".contact_form_error_message").hide();
+  $(".contact_form_error_message").text("Something went wrong. Please try again.");
+  var formElement = document.querySelector("#contact_form");
+  formElement.reportValidity();
+  var url = window.location.origin + "/markets/stocks/feedback/"
+  if (formElement.checkValidity()) {
+    var data = {
+      sender_name: $("#contact_form_name").val(),
+      sender_address: $("#contact_form_email").val(),
+      message: $("#contact_form_msg").val(),
+      captcha_response: token,
+      captcha_type: "invisible"
+    };
+    $.ajax({
+      type: "POST",
+      url,
+      data: JSON.stringify(data),
+      contentType: "application/json",
+    }).done(function () {
+      $("#contact_form").hide();
+      $(".success_msg").show();
+    }).fail(function (jqXHR, textStatus, errorThrown) {
+      try {
+        let errorResponse = JSON.parse(jqXHR.responseText);
+        $(".contact_form_error_message").text(errorResponse.message[0]);
+      }
+      catch (e) { }
+      $(".contact_form_error_message").show();
+      $(this).prop("disabled", false);
+    });
+  }
+}
+
+$(function () {
+  // Open the contact-us form popup
+  $("body").on("click", ".contact_us", function () {
+    event.stopPropagation();
+    $("#contact_us_modal").css('display', 'flex');
+  });
+
+  // Close the modal when clicking outside the popup content
+  $(document).on('click', function (event) {
+    // Check if the click happened outside the modal content
+    if (!$(event.target).closest('#contact_us_modal .contact_form_wrapper').length) {
+      $('#contact_us_modal').css('display', 'none');  // Close the modal
+      $("#contact_form").show();
+      $(".success_msg").hide();
+      // clear form for new entry.
+      $("#contact_form_name").val("");
+      $("#contact_form_email").val("");
+      $("#contact_form_msg").val("");
+      $(".contact_form_error_message").hide();
+    }
+    
+  });
+
+  // On button click. 
+  $("body").on("click", function (e) {
+    if (e.target.className === "contact_form_submit_button") {
+      e.preventDefault();
+      $(".contact_form .error").hide();
+      var formElement = document.querySelector("#contact_form");
+      formElement.reportValidity();
+      if (formElement.checkValidity()) {
+        $(this).prop("disabled", true);
+        grecaptcha.reset(gCaptchaIdContactUs);
+        grecaptcha.execute(gCaptchaIdContactUs)
+      }
+    }
+  });
+});

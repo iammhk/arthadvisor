@@ -8,6 +8,8 @@ from datetime import datetime, date
 import os
 import openai
 import json
+from utils import send_whatsapp_message
+from whatsapp_ticker_sender import send_whatsapp_ticker
 
 dashboard_bp = Blueprint('dashboard', __name__)
 
@@ -174,6 +176,9 @@ def show_dashboard():
             system_prompt = f.read()
         system_prompt = system_prompt.replace('$portfolio$', portfolio_str)
         system_prompt = system_prompt.replace('$recommendation$', latest_advice)
+        # Replace $User Name$ with user's full name or username
+        user_name = current_user.full_name or current_user.username or "User"
+        system_prompt = system_prompt.replace('$User Name$', user_name)
     else:
         system_prompt = "You are ArthAdvisor."
     today = date.today()
@@ -205,6 +210,15 @@ def show_dashboard():
                 )
                 db.session.add(new_log)
                 db.session.commit()
+                # Send WhatsApp ticker to all users with phone number
+                from models import User
+                users = User.query.all()
+                for user in users:
+                    if user.phone:
+                        try:
+                            send_whatsapp_ticker(user.phone, gpt_ticker_text)
+                        except Exception as e:
+                            print(f"WhatsApp send error for {user.phone}: {e}")
             except Exception as e:
                 gpt_ticker_text = f"GPT error: {e}"
         else:
@@ -260,3 +274,40 @@ def chat_gpt():
         return jsonify({'reply': reply})
     except Exception as e:
         return jsonify({'error': str(e)}), 500
+
+def send_whatsapp_curl_equivalent(phone_number):
+    import requests
+    url = "https://graph.facebook.com/v22.0/728214020370908/messages"
+    access_token = "EAAU8wLq0epYBPIc1oSrkC9k7TvQWqVXWi7A3nkDLemY2768utEo5hDAGhTbeHWbyZAIEOtK3ngGC93yqL39ghfWzAsVjAwfv4ci8TvIqIXlXkolTWj0EmpG5qZAxmmqemmz1DpwYNxyhZCP7dTnrcJt5Kye8x1OOEt6C3M1RA6m4vAM9ZCgoOEHxsCtHi2wAwWJJpZCJ1GXrteh9V06DxjFkO72zcBAnTDD5jOYAa"
+    headers = {
+        "Authorization": f"Bearer {access_token}",
+        "Content-Type": "application/json"
+    }
+    data = {
+        "messaging_product": "whatsapp",
+        "to": phone_number,
+        "type": "template",
+        "template": {
+            "name": "hello_world",
+            "language": {"code": "en_US"}
+        }
+    }
+    response = requests.post(url, headers=headers, json=data)
+    return response
+
+@dashboard_bp.route('/send_ticker_whatsapp', methods=['POST'])
+@login_required
+def send_ticker_whatsapp():
+    # Ignore ticker_text, just send the hello_world template as per curl
+    if not current_user.phone:
+        flash('No phone number found in your profile.', 'danger')
+        return redirect(url_for('dashboard.show_dashboard'))
+    try:
+        resp = send_whatsapp_curl_equivalent(current_user.phone)
+        if resp.status_code == 200:
+            flash('WhatsApp hello_world template sent!', 'success')
+        else:
+            flash(f'WhatsApp send failed: {resp.text}', 'danger')
+    except Exception as e:
+        flash(f'WhatsApp send error: {e}', 'danger')
+    return redirect(url_for('dashboard.show_dashboard'))

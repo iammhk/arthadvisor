@@ -1,0 +1,165 @@
+
+$(function () {
+    let currentIndex = -1; // Track the currently highlighted item
+    // Function to fetch results and display dropdown
+    const dropdownResult = async (query = '') => {
+        try {
+            // Check for special characters except '&' and '.'
+            if (/[^a-zA-Z0-9\s&.()]/.test(query)) {
+                $("#search_results").html('').append(`<div class="category-title">Sorry! No Companies found!</div>`).show();
+                $(".search_bar").addClass('active_input');
+                return; // Stop execution if invalid characters are found
+            }
+            query = encodeURIComponent(query); // Encode the query
+            $.ajax({
+                url: window.location.origin + `/markets/stocks/search/?q=${query}`,
+                method: 'GET',
+                dataType: 'json',
+                success: function (data) {
+                    $("#search_results").html('');  // Clear previous results
+                    let hasResults = false;  // check if there are any results
+
+                    // Iterate over the categories and their results
+                    for (const category in data) {
+                        const results = data[category];
+                        if (results.length > 0) {
+                            // display category
+                            const categoryTitle = $('<div></div>')
+                                .addClass('category-title')
+                                .text(category); // category name
+                            $("#search_results").append(categoryTitle);
+
+                            // Create and append each result item under the category
+                            results.forEach(result => {
+                                const item = $('<a></a>')
+                                    .addClass('result_item').attr('href', `/markets/stocks/${result.exchange}/${result.symbol}/` || 'javascript:void(0)')
+                                    .attr('target', '_self')
+                                    .html(`<span>${result.symbol} <br/> <span class="short_name">${result.display_name}</span> </span>`).append(`
+                                        <svg width="17" height="16" viewBox="0 0 17 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                        <path d="M1.33203 1.33325V12.6666C1.33203 13.7733 2.22536 14.6666 3.33203 14.6666H14.6654" stroke="#8B8B8B" stroke-width="1.5" stroke-miterlimit="10" stroke-linecap="round" stroke-linejoin="round"/>
+                                        <path d="M4.66797 9.99992L7.72797 6.4266C8.23464 5.83993 9.13464 5.79992 9.6813 6.35325L10.3146 6.98659C10.8613 7.53326 11.7613 7.49992 12.268 6.91325L15.3346 3.33325" stroke="#8B8B8B" stroke-width="1.5" stroke-miterlimit="10" stroke-linecap="round" stroke-linejoin="round"/>
+                                        </svg>
+                                    `);
+                                $("#search_results").append(item);
+                            });
+                            hasResults = true; // is results are present for this category
+                        }
+                    }
+                    // Show the dropdown only if there are results
+                    if (hasResults) {
+                        $("#search_results").show();
+                        $(".search_bar").addClass('active_input')
+                    } else {
+                        $("#search_results").hide();
+                        $(".search_bar").removeClass('active_input')
+                    }
+                },
+                error: function (xhr, status, error) {
+                    // Handle error
+                    if (xhr.status === 404 || xhr.status === 400) {
+                        $(".search_bar").addClass('active_input')
+                        $("#search_results").html('').append(`<div class="category-title">Sorry! No Companies found!</div>`).show();
+                    }
+                    else if (xhr.status === 500) {
+                        $(".search_bar").addClass('active_input')
+                        $("#search_results").html('').append(`<div class="category-title">Something went wrong! Please try again later.</div>`).show();
+                    }
+                    else {
+                        console.error(`Error: ${error}`);
+                    }
+                }
+            });
+
+        } catch (error) {
+            console.error('Error fetching search results:', error);
+        }
+    };
+
+    // search dropdown key up/down arrow navigation
+    $('#search').on('keydown', function (e) {
+
+        const $results = $('.dropdown .result_item');
+        // Reset currentIndex if input value changes
+        if (e.key.length === 1 || e.key === 'Backspace' || e.key === 'Delete') {
+            currentIndex = -1;
+            return;
+        }
+        // Handle keydown events
+        if (e.key === 'ArrowDown') {
+            e.preventDefault(); // Prevent default behavior
+            if (currentIndex < $results.length - 1) {
+                currentIndex++;
+                $results.removeClass('highlighted'); // Remove highlight from all dropdown item
+                $results.eq(currentIndex).addClass('highlighted'); // Highlight current
+                $results.eq(currentIndex)[0].scrollIntoView({ block: "nearest", behavior: "smooth" });
+            }
+        } else if (e.key === 'ArrowUp') {
+            e.preventDefault();
+            if (currentIndex > 0) {
+                currentIndex--;
+                $results.removeClass('highlighted');
+                $results.eq(currentIndex).addClass('highlighted');
+                $results.eq(currentIndex)[0].scrollIntoView({ block: "nearest", behavior: "smooth" });
+            }
+        } else if (e.key === 'Enter') {
+            e.preventDefault();
+            if (currentIndex >= 0 && currentIndex < $results.length) {
+                window.location.href = $results.eq(currentIndex).attr('href'); // link to the highlighted dropdown item
+            }
+        }
+    });
+
+    // Show dropdown when user clicks on the input field
+    $('.search_bar').on('click', function () {
+        $('.search_bar').addClass('typing_mode');
+        $('body, header').addClass('overlay_active'); // removing class from body to add overlay on mobile
+        $('.clear_icon').show(); // showing close button for search bar
+        $('#search').focus();
+    });
+
+    // Show dropdown while typing
+    $('#search').on('input', async function () {
+        $('.search_bar').addClass('typing_mode') //adding class to search field
+        const query = $(this).val();
+        if (query.length === 0) {
+            $("#search_results").hide();
+            $(".search_bar").removeClass('active_input')
+        } else {
+            // show search results based on the query
+            await dropdownResult(query);
+        }
+    });
+
+    // Clear the input field when close icon is clicked
+    $('.clear_icon').on('click', function (event) {
+        event.stopPropagation(); // Prevent the event from bubbling up
+        $('.search_bar').removeClass('typing_mode') //removing class to search field
+        $('body, header').removeClass('overlay_active'); // removing class from body to remove overlay on mobile
+        $('#search').val(''); //clearing the search input field
+        $("#search_results").hide();
+        $('.clear_icon').hide();
+
+        // $clearIcon.hide();
+    });
+
+    // Hide dropdown when clicking outside
+    $(document).on('click', (e) => {
+        if (!$(e.target).closest("#search_results").length && e.target !== $('#search') && !$(e.target).closest('.search_bar').length && !$(e.target).closest('.hamburger').length) {
+            $("#search_results").hide();
+            $('.search_bar').removeClass('typing_mode active_input') //removing class to search field
+            $('body, header').removeClass('overlay_active'); // removing class from body to remove overlay on mobile
+            if ($(".hamburger").hasClass("open")) { // closing hanburger dropdown on outside click
+                $('.hamburger').removeClass('open');
+            }
+            if ($('.clear_icon').is(':visible')) { // Check if the clear icon is visible
+                $('.clear_icon').hide();
+            }
+        }
+    });
+
+});
+
+// added to close search dropdown on browser back navigation
+$(window).on('pageshow', function (event) {
+    $('.search_bar').removeClass('typing_mode');//removing class to search field on page load
+});
