@@ -10,6 +10,9 @@ import openai
 import json
 from utils import send_whatsapp_message
 from whatsapp_ticker_sender import send_whatsapp_ticker
+import requests
+from flask import after_this_request
+import time
 
 dashboard_bp = Blueprint('dashboard', __name__)
 
@@ -58,9 +61,112 @@ def zerodha_callback():
         flash(f'Failed to connect Zerodha: {e}', 'danger')
     return redirect(url_for('dashboard.show_dashboard'))
 
+def check_and_generate_ticker_if_needed():
+    """
+    Checks if gpt_system_prompt.txt or global_advice.json has changed since last ticker generation.
+    If so, generates a new ticker_text for all users and sends to WhatsApp/Telegram.
+    """
+    from models import User, GPTTickerLog
+    import openai
+    import json
+    import os
+    from datetime import datetime
+    prompt_path = 'gpt_system_prompt.txt'
+    advice_path = 'global_advice.json'
+    # Get latest file modification times
+    prompt_mtime = os.path.getmtime(prompt_path) if os.path.exists(prompt_path) else 0
+    advice_mtime = os.path.getmtime(advice_path) if os.path.exists(advice_path) else 0
+    # Get last ticker log
+    last_log = GPTTickerLog.query.order_by(GPTTickerLog.created_at.desc()).first()
+    last_ticker_time = last_log.created_at.timestamp() if last_log else 0
+    # If either file changed since last ticker, regenerate
+    if prompt_mtime > last_ticker_time or advice_mtime > last_ticker_time:
+        # Compose system prompt for each user
+        users = User.query.all()
+        for user in users:
+            # Compose portfolio string (optional: fetch live holdings)
+            portfolio_str = "Portfolio not loaded."
+            # Try to get live holdings if possible
+            try:
+                from kiteconnect import KiteConnect
+                kite = None
+                if user.kite_api_key and user.kite_api_secret and user.kite_access_token:
+                    kite = KiteConnect(api_key=user.kite_api_key)
+                    kite.set_access_token(user.kite_access_token)
+                if kite:
+                    holdings = kite.holdings()
+                    if holdings:
+                        import pandas as pd
+                        df = pd.DataFrame([
+                            {
+                                'Stock': h['tradingsymbol'],
+                                'Quantity': h['quantity'],
+                                'Avg. Price': h['average_price'],
+                                'Current Price': h['last_price'],
+                                'P&L': h.get('pnl', 0)
+                            }
+                            for h in holdings
+                        ])
+                        portfolio_str = df.to_string(index=False)
+            except Exception:
+                pass
+            # Read latest advice
+            latest_advice = "No advice available."
+            if os.path.exists(advice_path):
+                with open(advice_path, 'r', encoding='utf-8') as f:
+                    advice_list = json.load(f)
+                if advice_list:
+                    latest_advice_entry = max(advice_list, key=lambda x: x.get('timestamp', ''))
+                    latest_advice = latest_advice_entry['advice']
+            # Read system prompt
+            if os.path.exists(prompt_path):
+                with open(prompt_path, 'r', encoding='utf-8') as f:
+                    system_prompt = f.read()
+                system_prompt = system_prompt.replace('$portfolio$', portfolio_str)
+                system_prompt = system_prompt.replace('$recommendation$', latest_advice)
+                user_name = user.full_name or user.username or "User"
+                system_prompt = system_prompt.replace('$User Name$', user_name)
+            else:
+                system_prompt = "You are ArthAdvisor."
+            # Generate ticker using OpenAI
+            openai_api_key = os.getenv('OPENAI_API_KEY')
+            if openai_api_key:
+                try:
+                    client = openai.OpenAI(api_key=openai_api_key)
+                    response = client.chat.completions.create(
+                        model="gpt-3.5-turbo",
+                        messages=[{"role": "system", "content": system_prompt}]
+                    )
+                    gpt_ticker_text = response.choices[0].message.content.strip()
+                    new_log = GPTTickerLog(
+                        user_id=user.id,
+                        system_prompt=system_prompt,
+                        ticker_text=gpt_ticker_text,
+                        created_at=datetime.now(),
+                        global_advice_timestamp=None
+                    )
+                    db.session.add(new_log)
+                    db.session.commit()
+                    # Send WhatsApp/Telegram
+                    if user.phone:
+                        try:
+                            send_whatsapp_ticker(user.phone, gpt_ticker_text)
+                        except Exception as e:
+                            print(f"WhatsApp send error for {user.phone}: {e}")
+                    if getattr(user, 'telegram_user_id', None):
+                        try:
+                            bot_token = os.getenv('TELEGRAM_BOT_TOKEN')
+                            send_telegram_message(user.telegram_user_id, gpt_ticker_text, bot_token)
+                        except Exception as e:
+                            print(f"Telegram send error for {user.telegram_user_id}: {e}")
+                except Exception as e:
+                    print(f"GPT error for user {user.id}: {e}")
+
+# Call this check at the start of show_dashboard
 @dashboard_bp.route('/dashboard')
 @login_required
 def show_dashboard():
+    check_and_generate_ticker_if_needed()
     kite = get_kite_client()
     stock_data = {}
     holdings = []
@@ -219,10 +325,58 @@ def show_dashboard():
                             send_whatsapp_ticker(user.phone, gpt_ticker_text)
                         except Exception as e:
                             print(f"WhatsApp send error for {user.phone}: {e}")
+                    # Send Telegram ticker to all users with telegram_user_id
+                    if getattr(user, 'telegram_user_id', None):
+                        try:
+                            bot_token = os.getenv('TELEGRAM_BOT_TOKEN') or getattr(current_app.config, 'TELEGRAM_BOT_TOKEN', None)
+                            send_telegram_message(user.telegram_user_id, gpt_ticker_text, bot_token)
+                        except Exception as e:
+                            print(f"Telegram send error for {user.telegram_user_id}: {e}")
             except Exception as e:
                 gpt_ticker_text = f"GPT error: {e}"
         else:
             gpt_ticker_text = "GPT not configured."
+    # --- Treemap Data Preparation using MCP server holdings ---
+    try:
+        # Use holdings from MCP server if available
+        mcp_holdings = []
+        if kite:
+            try:
+                mcp_holdings = kite.holdings()
+            except Exception:
+                mcp_holdings = []
+        if mcp_holdings:
+            holdings_df = pd.DataFrame([
+                {
+                    'SYMBOL': h['tradingsymbol'],
+                    'Value': h['last_price'] * h['quantity'],
+                    'Quantity': h['quantity']
+                }
+                for h in mcp_holdings
+            ])
+            holdings_df['Sector'] = holdings_df['SYMBOL'].map(symbol_to_sector).fillna('Unknown')
+            holdings_df = holdings_df[holdings_df['Value'] > 0]
+            sectors = holdings_df['Sector'].unique().tolist()
+            labels = ['Portfolio'] + sectors + holdings_df['SYMBOL'].tolist()
+            parents = [''] + ['Portfolio']*len(sectors) + holdings_df['Sector'].tolist()
+            sector_values = holdings_df.groupby('Sector')['Value'].sum().reindex(sectors).fillna(0).tolist()
+            values = [''] + sector_values + holdings_df['Value'].tolist()
+            # For backward compatibility, also build stockwise/sectorwise treemap lists
+            stockwise_treemap = [
+                {'label': row['SYMBOL'], 'parent': row['Sector'], 'value': row['Value']}
+                for _, row in holdings_df.iterrows()
+            ]
+            sectorwise_treemap = [
+                {'label': sector, 'parent': '', 'value': val}
+                for sector, val in zip(sectors, sector_values)
+            ]
+        else:
+            labels, parents, values = [], [], []
+            stockwise_treemap, sectorwise_treemap = [], []
+    except Exception as e:
+        labels, parents, values = [], [], []
+        stockwise_treemap, sectorwise_treemap = [], []
+
     # Pass gpt_ticker_text to template for chat initialization
     return render_template('dashboard.html', 
                            stock_data=stock_data, 
@@ -231,7 +385,13 @@ def show_dashboard():
                            market_indices=market_indices,
                            zerodha_connected=zerodha_connected,
                            funds_info=funds_info,
-                           gpt_ticker_text=gpt_ticker_text)
+                           gpt_ticker_text=gpt_ticker_text,
+                           stockwise_treemap=json.dumps(stockwise_treemap),
+                           sectorwise_treemap=json.dumps(sectorwise_treemap),
+                           treemap_labels=json.dumps(labels),
+                           treemap_parents=json.dumps(parents),
+                           treemap_values=json.dumps(values),
+                           symbol_to_sector=symbol_to_sector)
 
 @dashboard_bp.route('/chat_gpt', methods=['POST'])
 @login_required
@@ -310,4 +470,40 @@ def send_ticker_whatsapp():
             flash(f'WhatsApp send failed: {resp.text}', 'danger')
     except Exception as e:
         flash(f'WhatsApp send error: {e}', 'danger')
+    return redirect(url_for('dashboard.show_dashboard'))
+
+# Build a lookup table for stock symbol to sector
+import pandas as pd
+try:
+    sector_df = pd.read_csv('sector_stocks_extracted.csv')
+    symbol_to_sector = dict(zip(sector_df['Symbol'], sector_df['Sector']))
+except Exception:
+    symbol_to_sector = {}
+
+def send_telegram_message(telegram_user_id, message, bot_token=None):
+    if not bot_token:
+        bot_token = os.getenv('TELEGRAM_BOT_TOKEN')
+    if not bot_token or not telegram_user_id:
+        return False, 'Missing bot token or user id'
+    url = f'https://api.telegram.org/bot{bot_token}/sendMessage'
+    data = {'chat_id': telegram_user_id, 'text': message}
+    resp = requests.post(url, data=data)
+    if resp.status_code == 200:
+        return True, None
+    return False, resp.text
+
+@dashboard_bp.route('/send_ticker_telegram', methods=['POST'])
+@login_required
+def send_ticker_telegram():
+    ticker_text = request.form.get('ticker_text')
+    telegram_user_id = getattr(current_user, 'telegram_user_id', None)
+    if not telegram_user_id:
+        flash('No Telegram user ID found in your profile.', 'danger')
+        return redirect(url_for('dashboard.show_dashboard'))
+    bot_token = os.getenv('TELEGRAM_BOT_TOKEN') or current_app.config.get('TELEGRAM_BOT_TOKEN')
+    success, error = send_telegram_message(telegram_user_id, ticker_text, bot_token)
+    if success:
+        flash('Ticker sent to your Telegram!', 'success')
+    else:
+        flash(f'Telegram send failed: {error}', 'danger')
     return redirect(url_for('dashboard.show_dashboard'))

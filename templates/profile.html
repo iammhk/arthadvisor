@@ -36,6 +36,10 @@
                 {{ form.profile_pic(class="file-input file-input-bordered w-full max-w-xs") }}
             </div>
             <div class="mb-4">
+                {{ form.telegram_user_id.label(class="block text-gray-700 text-sm font-bold mb-2") }}
+                {{ form.telegram_user_id(class="input input-bordered input-accent w-full max-w-xs") }}
+            </div>
+            <div class="mb-4">
                 {{ form.submit(class="btn btn-secondary") }}
             </div>
         </form>

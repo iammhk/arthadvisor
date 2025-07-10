@@ -6,6 +6,7 @@ from flask_wtf.file import FileField, FileAllowed
 class RegistrationForm(FlaskForm):
     username = StringField('Username', validators=[DataRequired()])
     phone = StringField('Phone', validators=[Optional()])
+    telegram_user_id = StringField('Telegram User ID', validators=[Optional()])
     password = PasswordField('Password', validators=[DataRequired()])
     confirm_password = PasswordField('Confirm Password', validators=[DataRequired(), EqualTo('password')])
     submit = SubmitField('Register')
@@ -26,10 +27,14 @@ class ProfileForm(FlaskForm):
     full_name = StringField('Full Name', validators=[Optional()])
     email = StringField('Email', validators=[Optional(), Email()])
     phone = StringField('Phone', validators=[Optional()])
+    telegram_user_id = StringField('Telegram User ID', validators=[Optional()])
     profile_pic = FileField('Profile Picture', validators=[FileAllowed(['jpg', 'jpeg', 'png', 'gif'], 'Images only!')])
     submit = SubmitField('Update Profile')
 
 class SettingsForm(FlaskForm):
+    kite_api_key = StringField('Kite API Key', validators=[Optional()])
+    kite_api_secret = StringField('Kite API Secret', validators=[Optional()])
+    kite_access_token = StringField('Kite Access Token', validators=[Optional()])
     risk_appetite = StringField('Risk Appetite', validators=[Optional()])
     goal_short_term = StringField('Short Term Goal', validators=[Optional()])
     goal_medium_term = StringField('Medium Term Goal', validators=[Optional()])

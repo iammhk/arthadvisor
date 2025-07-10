@@ -16,6 +16,7 @@ class User(UserMixin, db.Model):
     goal_medium_term = db.Column(db.Text)
     goal_long_term = db.Column(db.Text)
     profile_pic = db.Column(db.String(256))  # Path to uploaded profile picture
+    telegram_user_id = db.Column(db.String(32))  # Telegram user ID for bot messages
     # Add more fields as needed
 
 class GPTTickerLog(db.Model):

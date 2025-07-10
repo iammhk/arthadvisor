@@ -38,12 +38,6 @@
             {{ gpt_ticker_text or 'GPT recommendations will appear here after you chat with ArthAdvisor below.' }}
         </div>
     </div>
-    {% if current_user.phone and gpt_ticker_text %}
-    <form id="send-whatsapp-form" method="post" action="{{ url_for('dashboard.send_ticker_whatsapp') }}" class="ml-4">
-        <input type="hidden" name="ticker_text" value="{{ gpt_ticker_text }}">
-        <button type="submit" class="btn btn-success btn-sm">Send to WhatsApp</button>
-    </form>
-    {% endif %}
 </div>
 
 <div class="container mx-auto mt-8 p-4">
@@ -78,6 +72,100 @@
             </div>
         </div>
     </div>
+
+    <div class="my-12">
+        <h2 class="text-3xl font-bold mb-6 gradient-text">Portfolio Allocation</h2>
+        <div id="sectorwise-treemap" style="height:350px;"></div>
+    </div>
+    <script src="https://cdn.plot.ly/plotly-2.32.0.min.js"></script>
+    <script>
+    // Use live data from backend context, robust to empty/invalid JSON
+    const labels = JSON.parse(`{{ treemap_labels|safe }}`);
+    const parents = JSON.parse(`{{ treemap_parents|safe }}`);
+    const values = JSON.parse(`{{ treemap_values|safe }}`);
+    
+    // Gradient palette matching theme
+    const gradientColors = [
+      '#00C6FF', // blue
+      '#0072FF', // deep blue
+      '#8733FF', // purple
+      '#FF5C7C', // pink
+      '#FF00C6', // magenta
+      '#00FFA3', // teal
+      '#FFD600', // yellow
+      '#FF8C00', // orange
+      '#FF3C00', // red-orange
+      '#00E1FF', // cyan
+      '#A259FF', // violet
+      '#43E97B', // green
+      '#38F9D7', // turquoise
+      '#F7971E', // gold
+      '#F44369', // coral
+      '#6A82FB', // blue-violet
+      '#FC5C7D', // rose
+      '#11998E', // jade
+      '#C471F5', // lavender
+      '#F64F59'  // deep red
+    ];
+    // Assign gradient colors to sectors, then lighter variants to stocks
+    function getColor(index, total, offset=0) {
+      // Interpolate between gradient stops
+      const cidx = (index + offset) % gradientColors.length;
+      return gradientColors[cidx];
+    }
+    const sectorCount = 4;
+    const sectorColorMap = {};
+    labels.forEach((label, i) => {
+      if (parents[i] === 'Portfolio' && label !== 'Portfolio') {
+        sectorColorMap[label] = getColor(Object.keys(sectorColorMap).length, sectorCount);
+      }
+    });
+    const colors = labels.map((label, i) => {
+      if (i === 0) return '#222'; // root node
+      if (parents[i] === 'Portfolio') {
+        return sectorColorMap[label];
+      }
+      // Stocks: use sector color, but lighter (add 40% white)
+      const sector = parents[i];
+      let base = sectorColorMap[sector] || '#aaa';
+      // Simple lighten: blend with white
+      function lighten(hex, amt=0.4) {
+        let c = hex.replace('#','');
+        if (c.length === 3) c = c[0]+c[0]+c[1]+c[1]+c[2]+c[2];
+        let num = parseInt(c,16);
+        let r = (num >> 16) + Math.round((255 - (num >> 16)) * amt);
+        let g = ((num >> 8) & 0x00FF) + Math.round((255 - ((num >> 8) & 0x00FF)) * amt);
+        let b = (num & 0x0000FF) + Math.round((255 - (num & 0x0000FF)) * amt);
+        return `rgb(${r},${g},${b})`;
+      }
+      return lighten(base, 0.4);
+    });
+    // Get the dashboard background color from the main container (DaisyUI/Tailwind uses bg-base-100 or bg-base-200)
+    function getDashboardBgColor() {
+      // Try the main container
+      const container = document.querySelector('.container.mx-auto');
+      if (container) {
+        return getComputedStyle(container).backgroundColor;
+      }
+      // Fallback to body
+      return getComputedStyle(document.body).backgroundColor;
+    }
+    Plotly.newPlot('sectorwise-treemap', [{
+      type: 'treemap',
+      labels: labels,
+      parents: parents,
+      values: values,
+      textinfo: 'label+value+percent parent',
+      branchvalues: 'total',
+      root: {color: getDashboardBgColor()},
+      marker: {colors: colors}
+    }], {
+      margin: {t: 30, l: 0, r: 0, b: 0},
+      paper_bgcolor: getDashboardBgColor(),
+      plot_bgcolor: 'white' //getDashboardBgColor()
+    });
+    </script>
+    
     
     {% if not zerodha_connected %}
         <div class="alert alert-warning my-6">
@@ -96,6 +184,7 @@
                     <thead>
                         <tr class="bg-base-200">
                             <th class="bg-base-200">Stock</th>
+                            <th class="bg-base-200">Sector</th>
                             <th class="bg-base-200">Quantity</th>
                             <th class="bg-base-200">Avg. Price</th>
                             <th class="bg-base-200">Current Price</th>
@@ -111,6 +200,7 @@
                                 {% set pl = ((current_price - avg_price) * quantity) | round(2) %}
                                 <tr class="hover:bg-base-200 transition-colors duration-200">
                                     <td class="font-medium">{{ stock }}</td>
+                                    <td>{{ symbol_to_sector[stock] if symbol_to_sector[stock] is defined else 'Unknown' }}</td>
                                     <td>{{ quantity }}</td>
                                     <td>₹{{ "{:,.2f}".format(avg_price) }}</td>
                                     <td>₹{{ "{:,.2f}".format(current_price) }}</td>
@@ -120,7 +210,7 @@
                                 </tr>
                             {% endfor %}
                         {% else %}
-                            <tr><td colspan="5" class="text-error">No holdings data available. Please connect your Zerodha account.</td></tr>
+                            <tr><td colspan="6" class="text-error">No holdings data available. Please connect your Zerodha account.</td></tr>
                         {% endif %}
                     </tbody>
                 </table>
@@ -155,6 +245,7 @@
         const msg = document.createElement('div');
         msg.className = sender === 'user' ? 'text-right mb-2' : 'text-left mb-2';
         if(sender === 'gpt') {
+            // Render markdown using marked.js and style with Tailwind/DaisyUI prose
             msg.innerHTML = `<span class='font-bold'>GPT:</span> <span class='prose prose-sm prose-slate'>${marked.parse(text)}</span>`;
         } else {
             msg.innerHTML = `<span class='font-bold'>You:</span> ${text}`;
@@ -198,7 +289,7 @@
 
 <style>
     .gradient-text {
-        background: linear-gradient(90deg, #00C6FF, #0072FF, #8733FF, #FF5C7C, #FF00C6);
+        background: linear-gradient(90deg, #00C6FF, #0072FF, #8733FF, #FF5C7D, #FF00C6);
         -webkit-background-clip: text;
         -webkit-text-fill-color: transparent;
         background-clip: text;

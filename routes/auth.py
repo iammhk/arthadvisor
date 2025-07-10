@@ -16,7 +16,8 @@ def register():
         new_user = User(
             username=form.username.data,
             password=hashed_password,
-            phone=form.phone.data
+            phone=form.phone.data,
+            telegram_user_id=form.telegram_user_id.data
         )
         db.session.add(new_user)
         db.session.commit()
@@ -32,6 +33,16 @@ def login():
         if user and bcrypt.check_password_hash(user.password, form.password.data):
             login_user(user)
             flash('Login Successful', 'success')
+            # --- Zerodha Kite login integration ---
+            if user.kite_api_key and user.kite_api_secret:
+                from kiteconnect import KiteConnect
+                kite = KiteConnect(api_key=user.kite_api_key)
+                try:
+                    login_url = kite.login_url()
+                    # Store intended next page in session if needed
+                    return redirect(login_url)
+                except Exception as e:
+                    flash(f'Kite login error: {e}', 'warning')
             return redirect(url_for('dashboard.show_dashboard'))
         else:
             flash('Login Unsuccessful. Please check username and password', 'danger')
@@ -66,6 +77,7 @@ def profile():
         current_user.full_name = form.full_name.data
         current_user.email = form.email.data
         current_user.phone = form.phone.data
+        current_user.telegram_user_id = form.telegram_user_id.data
         # Handle profile picture upload
         if form.profile_pic.data:
             pic = form.profile_pic.data
