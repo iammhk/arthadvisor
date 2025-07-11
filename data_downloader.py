@@ -7,41 +7,92 @@ from sqlalchemy.exc import IntegrityError
 import numpy as np
 from datetime import datetime, timezone, timedelta
 from dotenv import load_dotenv
+from kiteconnect import KiteConnect
+from flask import Flask, request, redirect, jsonify
+import logging
+from threading import Thread
+
+# --- Zerodha (Kite Connect) Login Flow ---
+# Remove hardcoded API keys; load from .env or prompt if missing
+KITE_API_KEY = "v2qa0jwrkw1l7489"
+KITE_API_SECRET = "17b9qraamiojz39sj7xa0hkaoqctf7fu"
+
+REDIRECT_URL = "http://127.0.0.1:5000/kite_callback"
+
+kite = KiteConnect(api_key=KITE_API_KEY)
+access_token = None
+
+# Set up logging
+logging.basicConfig(level=logging.INFO)
+
+# --- Flask server for Kite login callback ---
+app = Flask(__name__)
+
+@app.route('/')
+def home():
+    return "Welcome! Visit /login to authenticate with Kite Connect."
+
+@app.route('/login')
+def login():
+    login_url = kite.login_url()
+    return redirect(login_url)
+
+def run_data_download(token):
+    kite = KiteConnect(api_key=KITE_API_KEY)
+    kite.set_access_token(token)
+    update_database(csv_file_path, kite)
+
+@app.route('/callback')
+def callback():
+    global access_token
+    request_token = request.args.get('request_token')
+    try:
+        data = kite.generate_session(request_token, api_secret=KITE_API_SECRET)
+        access_token = data["access_token"]
+        with open('kite_access_token.txt', 'w') as f:
+            f.write(access_token)
+        logging.info("Access token generated successfully.")
+        # Start data download in background
+        Thread(target=run_data_download, args=(access_token,), daemon=True).start()
+        return "Access token generated successfully! Data download started in background. You can now close this tab."
+    except Exception as e:
+        logging.error(f"Error generating access token: {e}")
+        return f"Error generating access token: {e}"
+
+@app.route('/zerodha/callback')
+def zerodha_callback():
+    return callback()
+
+@app.route('/get_token')
+def get_token():
+    if access_token:
+        return jsonify({"access_token": access_token})
+    else:
+        return jsonify({"error": "No access token available. Please visit /login first."}), 401
+
+# --- Main Data Downloader Logic ---
 
 # Load environment variables from .env file
 load_dotenv()
 
-# Get file paths from environment variables
-csv_file_path = os.getenv('PORTFOLIO_CSV')
-
-# Get the directory of the current script
+csv_file_path = 'prtflo.csv'
 current_directory = os.path.dirname(os.path.abspath(__file__))
-
-# Set the path to the instance folder
 instance_folder = os.path.join(current_directory, 'instance')
-
-# Ensure the instance folder exists
 os.makedirs(instance_folder, exist_ok=True)
-
-# Construct the absolute path to the database file within the instance folder
 db_file_path = os.path.join(instance_folder, os.getenv('SQLALCHEMY_DATABASE_URI').replace('sqlite:///', ''))
-
-# SQLAlchemy setup
 engine = create_engine(f'sqlite:///{db_file_path}', echo=False)
 Base = declarative_base()
 Session = sessionmaker(bind=engine)
 session = Session()
 metadata = MetaData()
 
-# Define the Symbols table
 class Symbol(Base):
     __tablename__ = 'symbols'
     id = Column(Integer, primary_key=True, autoincrement=True)
     name = Column(String)
-    yahoo_symbol = Column(String, unique=True)
-    __table_args__ = (UniqueConstraint('yahoo_symbol', name='_yahoo_symbol_uc'),)
+    symbol = Column(String, unique=True)
+    __table_args__ = (UniqueConstraint('symbol', name='_symbol_uc'),)
 
-# Define the Data table
 class FinanceData(Base):
     __tablename__ = 'finance_data'
     id = Column(Integer, primary_key=True, autoincrement=True)
@@ -54,12 +105,11 @@ class FinanceData(Base):
     volume = Column(Float)
     __table_args__ = (UniqueConstraint('symbol', 'date', name='_symbol_date_uc'),)
 
-# Define the Timestamps table
 timestamps_table = Table('timestamps', metadata,
     Column('id', Integer, primary_key=True, autoincrement=True),
     Column('symbol', String, nullable=False),
     Column('timestamp', DateTime, nullable=False),
-    Column('operation', String, nullable=False)  # download, training, or prediction
+    Column('operation', String, nullable=False)
 )
 
 Base.metadata.create_all(engine)
@@ -73,7 +123,7 @@ def upsert_timestamp(symbol, operation):
         .values(timestamp=timestamp)
     )
     result = session.execute(stmt)
-    if result.rowcount == 0:  # If no row was updated, insert a new one
+    if result.rowcount == 0:
         session.execute(
             timestamps_table.insert().values(symbol=symbol, timestamp=timestamp, operation=operation)
         )
@@ -87,51 +137,53 @@ def insert_or_update_symbols(df):
     updated_symbols = 0
     for index, row in df.iterrows():
         name = row['SYMBOL']
-        yahoo_symbol = row['YAHOO_SYMBOL']
-
-        symbol = session.query(Symbol).filter_by(yahoo_symbol=yahoo_symbol).first()
-
+        symbol = row['SYMBOL']
+        symbol = session.query(Symbol).filter_by(symbol=symbol).first()
         if symbol:
             symbol.name = name
             updated_symbols += 1
         else:
-            new_symbol = Symbol(name=name, yahoo_symbol=yahoo_symbol)
+            new_symbol = Symbol(name=name, symbol=symbol)
             session.add(new_symbol)
             inserted_symbols += 1
-
     session.commit()
     return inserted_symbols, updated_symbols
 
-def fetch_and_insert_update_data(df):
+def fetch_and_insert_update_data(df, kite):
     inserted_data = 0
     updated_data = 0
     failed_downloads = []
-
-    # Generate daily dates for the last 2 years
     end_date = datetime.now().date()
     start_date = end_date - timedelta(days=2*365)
-    date_range = pd.date_range(start=start_date, end=end_date, freq='B')  # Business days only
-
-    for yahoo_symbol in df['YAHOO_SYMBOL']:
+    for symbol in df['SYMBOL']:
         try:
-            # Generate random walk for prices
-            price = np.random.uniform(100, 1000)  # Start price
-            prices = [price]
-            for _ in range(1, len(date_range)):
-                # Simulate daily return
-                price = prices[-1] * np.random.normal(1.0002, 0.02)  # Slight upward drift
-                prices.append(max(price, 1))  # Price can't go below 1
-            prices = np.array(prices)
-            
-            # Generate OHLCV
-            for i, date in enumerate(date_range):
-                open_p = prices[i] * np.random.uniform(0.98, 1.02)
-                close_p = prices[i] * np.random.uniform(0.98, 1.02)
-                high_p = max(open_p, close_p) * np.random.uniform(1.00, 1.03)
-                low_p = min(open_p, close_p) * np.random.uniform(0.97, 1.00)
-                volume = np.random.randint(10000, 1000000)
-
-                finance_data = session.query(FinanceData).filter_by(symbol=yahoo_symbol, date=date.date()).first()
+            nse_symbol = symbol
+            instrument_token = None
+            if kite:
+                instruments = kite.instruments('NSE')
+                for inst in instruments:
+                    if inst['tradingsymbol'] == nse_symbol:
+                        instrument_token = inst['instrument_token']
+                        break
+            if not instrument_token:
+                print(f'Instrument token not found for {nse_symbol}')
+                failed_downloads.append(symbol)
+                continue
+            kite_data = kite.historical_data(
+                instrument_token,
+                start_date.strftime('%Y-%m-%d'),
+                end_date.strftime('%Y-%m-%d'),
+                interval='day',
+                continuous=False
+            )
+            for row in kite_data:
+                date = row['date'].date()
+                open_p = row['open']
+                high_p = row['high']
+                low_p = row['low']
+                close_p = row['close']
+                volume = row['volume']
+                finance_data = session.query(FinanceData).filter_by(symbol=symbol, date=date).first()
                 if finance_data:
                     finance_data.open = open_p
                     finance_data.high = high_p
@@ -141,8 +193,8 @@ def fetch_and_insert_update_data(df):
                     updated_data += 1
                 else:
                     new_finance_data = FinanceData(
-                        symbol=yahoo_symbol,
-                        date=date.date(),
+                        symbol=symbol,
+                        date=date,
                         open=open_p,
                         high=high_p,
                         low=low_p,
@@ -151,26 +203,25 @@ def fetch_and_insert_update_data(df):
                     )
                     session.add(new_finance_data)
                     inserted_data += 1
-            print(f'Generated random data for {yahoo_symbol}')
-            upsert_timestamp(yahoo_symbol, 'download')
+            print(f'Downloaded Kite data for {symbol}')
+            upsert_timestamp(symbol, 'download')
         except Exception as e:
-            print(f'Failed to generate data for {yahoo_symbol}: {e}')
-            failed_downloads.append(yahoo_symbol)
-
+            print(f'Failed to download data for {symbol}: {e}')
+            failed_downloads.append(symbol)
     session.commit()
     return inserted_data, updated_data, failed_downloads
 
-def update_database(csv_file_path):
+def update_database(csv_file_path, kite):
     df = read_csv(csv_file_path)
     inserted_symbols, updated_symbols = insert_or_update_symbols(df)
     print(f'Inserted {inserted_symbols} new symbols.')
     print(f'Updated {updated_symbols} existing symbols.')
-    
-    inserted_data, updated_data, failed_downloads = fetch_and_insert_update_data(df)
+    inserted_data, updated_data, failed_downloads = fetch_and_insert_update_data(df, kite)
     print(f'Inserted {inserted_data} new data entries.')
     print(f'Updated {updated_data} existing data entries.')
     if failed_downloads:
         print(f'Failed to download data for the following symbols: {failed_downloads}')
 
+# The main entry point is now only the Flask app
 if __name__ == '__main__':
-    update_database(csv_file_path)
+    app.run(port=5000)

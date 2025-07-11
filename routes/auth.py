@@ -3,8 +3,6 @@ from flask_login import login_user, logout_user, login_required, current_user
 from extensions import db, bcrypt
 from forms import RegistrationForm, LoginForm, ResetPasswordForm, ProfileForm
 from models import User
-from werkzeug.utils import secure_filename
-import os
 
 auth_bp = Blueprint('auth', __name__)
 
@@ -13,12 +11,7 @@ def register():
     form = RegistrationForm()
     if form.validate_on_submit():
         hashed_password = bcrypt.generate_password_hash(form.password.data).decode('utf-8')
-        new_user = User(
-            username=form.username.data,
-            password=hashed_password,
-            phone=form.phone.data,
-            telegram_user_id=form.telegram_user_id.data
-        )
+        new_user = User(username=form.username.data, password=hashed_password)
         db.session.add(new_user)
         db.session.commit()
         flash('User Registered Successfully', 'success')
@@ -33,16 +26,6 @@ def login():
         if user and bcrypt.check_password_hash(user.password, form.password.data):
             login_user(user)
             flash('Login Successful', 'success')
-            # --- Zerodha Kite login integration ---
-            if user.kite_api_key and user.kite_api_secret:
-                from kiteconnect import KiteConnect
-                kite = KiteConnect(api_key=user.kite_api_key)
-                try:
-                    login_url = kite.login_url()
-                    # Store intended next page in session if needed
-                    return redirect(login_url)
-                except Exception as e:
-                    flash(f'Kite login error: {e}', 'warning')
             return redirect(url_for('dashboard.show_dashboard'))
         else:
             flash('Login Unsuccessful. Please check username and password', 'danger')
@@ -74,19 +57,7 @@ def reset_password():
 def profile():
     form = ProfileForm(obj=current_user)
     if form.validate_on_submit():
-        current_user.full_name = form.full_name.data
-        current_user.email = form.email.data
-        current_user.phone = form.phone.data
-        current_user.telegram_user_id = form.telegram_user_id.data
-        # Handle profile picture upload
-        if form.profile_pic.data:
-            pic = form.profile_pic.data
-            filename = secure_filename(pic.filename)
-            upload_folder = os.path.join('static', 'images', 'profile_pics')
-            os.makedirs(upload_folder, exist_ok=True)
-            file_path = os.path.join(upload_folder, f"{current_user.username}_{filename}")
-            pic.save(file_path)
-            current_user.profile_pic = file_path.replace('static/', '')  # store relative path
-        db.session.commit()
-        flash('Profile updated successfully.', 'success')
+        # Only allow updating other fields if added in future
+        flash('Profile updated.', 'success')
+        return redirect(url_for('auth.profile'))
     return render_template('profile.html', form=form)

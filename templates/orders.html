@@ -1,0 +1,135 @@
+{% extends 'base.html' %}
+
+{% block head %}
+    {{ super() }}
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+    <title>Orders - ArthAdvisor</title>
+{% endblock %}
+
+{% block content %}
+<div class="container mx-auto mt-8 p-4">
+    <h1 class="text-4xl font-bold mb-8 gradient-text">Active Orders</h1>
+    <div class="card bg-base-100 shadow-xl mb-8">
+        <div class="card-body">
+            <div class="overflow-x-auto">
+                <table class="table w-full">
+                    <thead>
+                        <tr class="bg-base-200">
+                            <th>Order ID</th>
+                            <th>Stock</th>
+                            <th>Type</th>
+                            <th>Quantity</th>
+                            <th>Order Type</th>
+                            <th>Status</th>
+                            <th>Placed At</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% if orders %}
+                            {% for order in orders %}
+                                <tr>
+                                    <td>{{ order.order_id }}</td>
+                                    <td>{{ order.tradingsymbol }}</td>
+                                    <td>{{ order.transaction_type }}</td>
+                                    <td>{{ order.quantity }}</td>
+                                    <td>{{ order.order_type }}</td>
+                                    <td>{{ order.status }}</td>
+                                    <td>{{ order.order_timestamp }}</td>
+                                </tr>
+                            {% endfor %}
+                        {% else %}
+                            <tr><td colspan="7" class="text-error">No active orders found.</td></tr>
+                        {% endif %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    <h2 class="text-3xl font-bold mb-4 gradient-text">Today's Completed Orders</h2>
+    <div class="card bg-base-100 shadow-xl mb-8">
+        <div class="card-body">
+            <div class="overflow-x-auto">
+                <table class="table w-full">
+                    <thead>
+                        <tr class="bg-base-200">
+                            <th>Order ID</th>
+                            <th>Stock</th>
+                            <th>Type</th>
+                            <th>Quantity</th>
+                            <th>Order Type</th>
+                            <th>Status</th>
+                            <th>Placed At</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% if today_completed %}
+                            {% for order in today_completed %}
+                                <tr>
+                                    <td>{{ order.order_id }}</td>
+                                    <td>{{ order.tradingsymbol }}</td>
+                                    <td>{{ order.transaction_type }}</td>
+                                    <td>{{ order.quantity }}</td>
+                                    <td>{{ order.order_type }}</td>
+                                    <td>{{ order.status }}</td>
+                                    <td>{{ order.order_timestamp }}</td>
+                                </tr>
+                            {% endfor %}
+                        {% else %}
+                            <tr><td colspan="7" class="text-error">No completed orders today.</td></tr>
+                        {% endif %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    <h2 class="text-3xl font-bold mb-4 gradient-text">All Orders Placed by You</h2>
+    <div class="card bg-base-100 shadow-xl">
+        <div class="card-body">
+            <div class="overflow-x-auto">
+                <table class="table w-full">
+                    <thead>
+                        <tr class="bg-base-200">
+                            <th>Order ID</th>
+                            <th>Stock</th>
+                            <th>Type</th>
+                            <th>Quantity</th>
+                            <th>Order Type</th>
+                            <th>Status</th>
+                            <th>Placed At</th>
+                            <th>Created</th>
+                            <th>Updated</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% if user_orders %}
+                            {% for order in user_orders %}
+                                <tr>
+                                    <td>{{ order.order_id }}</td>
+                                    <td>{{ order.tradingsymbol }}</td>
+                                    <td>{{ order.transaction_type }}</td>
+                                    <td>{{ order.quantity }}</td>
+                                    <td>{{ order.order_type }}</td>
+                                    <td>{{ order.status }}</td>
+                                    <td>{{ order.order_timestamp or '-' }}</td>
+                                    <td>{{ order.created_at.strftime('%Y-%m-%d %H:%M') if order.created_at else '-' }}</td>
+                                    <td>{{ order.updated_at.strftime('%Y-%m-%d %H:%M') if order.updated_at else '-' }}</td>
+                                </tr>
+                            {% endfor %}
+                        {% else %}
+                            <tr><td colspan="9" class="text-error">No orders found in database.</td></tr>
+                        {% endif %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+<style>
+.gradient-text {
+    background: linear-gradient(90deg, #00C6FF, #0072FF, #8733FF, #FF5C7D, #FF00C6);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+</style>
+{% endblock %}

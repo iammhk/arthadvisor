@@ -280,6 +280,46 @@
         </div>
     </div>
     
+    <!-- Top Recommendations Table -->
+    <div class="card bg-base-100 shadow-xl my-12">
+        <div class="card-body">
+            <h2 class="text-3xl font-bold mb-6 gradient-text">Top Recommendations</h2>
+            <div class="overflow-x-auto">
+                <table class="table w-full">
+                    <thead>
+                        <tr class="bg-base-200">
+                            <th class="bg-base-200">Rank</th>
+                            <th class="bg-base-200">Stock</th>
+                            <th class="bg-base-200">30 day Closing</th>
+                            <th class="bg-base-200">30 day returns</th>
+                            <th class="bg-base-200">LTP</th>
+                            <th class="bg-base-200">Trade</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% if top_recommendations %}
+                            {% for rec in top_recommendations %}
+                                <tr class="hover:bg-base-200 transition-colors duration-200">
+                                    <td>{{ rec['Rank'] }}</td>
+                                    <td>{{ rec['Stock'] }}</td>
+                                    <td>{{ rec['30_day_closing'] }}</td>
+                                    <td>{{ rec['30_day_returns'] }}</td>
+                                    <td>{{ rec['LTP'] }}</td>
+                                    <td>
+                                        <button class="btn btn-xs btn-success mr-1" onclick="openOrderPopup({{ rec['Stock']|tojson }}, 'BUY', '{{ rec['LTP'] }}')">+</button>
+                                        <button class="btn btn-xs btn-error" onclick="openOrderPopup({{ rec['Stock']|tojson }}, 'SELL', '{{ rec['LTP'] }}')">-</button>
+                                    </td>
+                                </tr>
+                            {% endfor %}
+                        {% else %}
+                            <tr><td colspan="6" class="text-error">No recommendations available.</td></tr>
+                        {% endif %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
     <!-- Chat Dialog Box -->
     <div class="card bg-base-100 shadow-xl my-8">
         <div class="card-body">

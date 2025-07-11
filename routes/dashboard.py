@@ -3,7 +3,7 @@ from flask_login import login_required, current_user
 from kiteconnect import KiteConnect
 import pandas as pd
 from extensions import db
-from models import User, GPTTickerLog
+from models import User, GPTTickerLog, UserOrder
 from datetime import datetime, date
 import os
 import openai
@@ -377,21 +377,44 @@ def show_dashboard():
         labels, parents, values = [], [], []
         stockwise_treemap, sectorwise_treemap = [], []
 
+    # --- Top Recommendations Table ---
+    # Load top recommendations from aggregate_30day_predictions.csv
+    top_recommendations = []
+    try:
+        rec_path = os.path.join(os.path.dirname(__file__), '..', 'predictions', 'aggregate_30day_predictions.csv')
+        if os.path.exists(rec_path):
+            df = pd.read_csv(rec_path)
+            if 'rank' in df.columns:
+                df = df.sort_values('rank')
+            # Only keep top 10 (or all if less)
+            for _, row in df.head(10).iterrows():
+                top_recommendations.append({
+                    'rank': int(row['rank']) if 'rank' in row else '',
+                    'Stock': row['Stock'] if 'Stock' in row else '',
+                    '30_day_closing': row['30 day Closing'] if '30 day Closing' in row else '',
+                    '30_day_returns': row['30 day returns'] if '30 day returns' in row else '',
+                    'LTP': row['LTP'] if 'LTP' in row else ''
+                })
+    except Exception as e:
+        top_recommendations = []
+
     # Pass gpt_ticker_text to template for chat initialization
     return render_template('dashboard.html', 
-                           stock_data=stock_data, 
-                           total_holdings_value=total_holdings_value,
-                           total_pnl=total_pnl,
-                           market_indices=market_indices,
-                           zerodha_connected=zerodha_connected,
-                           funds_info=funds_info,
-                           gpt_ticker_text=gpt_ticker_text,
-                           stockwise_treemap=json.dumps(stockwise_treemap),
-                           sectorwise_treemap=json.dumps(sectorwise_treemap),
-                           treemap_labels=json.dumps(labels),
-                           treemap_parents=json.dumps(parents),
-                           treemap_values=json.dumps(values),
-                           symbol_to_sector=symbol_to_sector)
+        stock_data=stock_data, 
+        total_holdings_value=total_holdings_value,
+        total_pnl=total_pnl,
+        market_indices=market_indices,
+        zerodha_connected=zerodha_connected,
+        funds_info=funds_info,
+        gpt_ticker_text=gpt_ticker_text,
+        stockwise_treemap=json.dumps(stockwise_treemap),
+        sectorwise_treemap=json.dumps(sectorwise_treemap),
+        treemap_labels=json.dumps(labels),
+        treemap_parents=json.dumps(parents),
+        treemap_values=json.dumps(values),
+        symbol_to_sector=symbol_to_sector,
+        top_recommendations=top_recommendations
+    )
 
 @dashboard_bp.route('/chat_gpt', methods=['POST'])
 @login_required
@@ -534,6 +557,19 @@ def place_order():
         if order_type == 'LIMIT':
             order_kwargs['price'] = price
         order_id = kite.place_order(**order_kwargs)
+        # Save order to UserOrder table
+        user_order = UserOrder(
+            user_id=current_user.id,
+            order_id=order_id,
+            tradingsymbol=stock,
+            transaction_type=transaction_type,
+            quantity=quantity,
+            order_type=order_type,
+            status='OPEN',
+            order_timestamp=None
+        )
+        db.session.add(user_order)
+        db.session.commit()
         flash(f'{side} order placed for {stock} (Order ID: {order_id})', 'success')
     except Exception as e:
         flash(f'Order failed: {e}', 'danger')

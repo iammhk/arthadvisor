@@ -29,6 +29,22 @@ class GPTTickerLog(db.Model):
 
     user = db.relationship('User', backref=db.backref('gpt_ticker_logs', lazy=True))
 
+class UserOrder(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    order_id = db.Column(db.String(64), nullable=False)
+    tradingsymbol = db.Column(db.String(32), nullable=False)
+    transaction_type = db.Column(db.String(8), nullable=False)
+    quantity = db.Column(db.Integer, nullable=False)
+    order_type = db.Column(db.String(16), nullable=False)
+    status = db.Column(db.String(32), nullable=False)
+    order_timestamp = db.Column(db.String(32), nullable=True)
+    created_at = db.Column(db.DateTime, default=db.func.now())
+    updated_at = db.Column(db.DateTime, default=db.func.now(), onupdate=db.func.now())
+
+    def __repr__(self):
+        return f'<UserOrder {self.order_id} {self.tradingsymbol} {self.status}>'
+
 @login_manager.user_loader
 def load_user(user_id):
     return User.query.get(int(user_id))
