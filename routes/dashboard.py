@@ -507,3 +507,34 @@ def send_ticker_telegram():
     else:
         flash(f'Telegram send failed: {error}', 'danger')
     return redirect(url_for('dashboard.show_dashboard'))
+
+@dashboard_bp.route('/place_order', methods=['POST'])
+@login_required
+def place_order():
+    stock = request.form.get('stock')
+    side = request.form.get('side')
+    quantity = request.form.get('quantity', type=int)
+    order_type = request.form.get('order_type', 'LIMIT')
+    price = request.form.get('price', type=float)
+    kite = get_kite_client()
+    if not kite:
+        flash('Zerodha not connected. Please connect your account.', 'danger')
+        return redirect(url_for('dashboard.show_dashboard'))
+    try:
+        transaction_type = 'BUY' if side == 'BUY' else 'SELL'
+        order_kwargs = dict(
+            variety='regular',
+            exchange='NSE',
+            tradingsymbol=stock,
+            transaction_type=transaction_type,
+            quantity=quantity,
+            order_type=order_type,
+            product='CNC'
+        )
+        if order_type == 'LIMIT':
+            order_kwargs['price'] = price
+        order_id = kite.place_order(**order_kwargs)
+        flash(f'{side} order placed for {stock} (Order ID: {order_id})', 'success')
+    except Exception as e:
+        flash(f'Order failed: {e}', 'danger')
+    return redirect(url_for('dashboard.show_dashboard'))

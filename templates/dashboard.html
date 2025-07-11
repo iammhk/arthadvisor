@@ -1,5 +1,47 @@
 {% extends 'base.html' %}
 
+{% block head %}
+    {{ super() }}
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+    <style>
+        /* Responsive tweaks for mobile */
+        html, body {
+            overscroll-behavior-y: contain;
+        }
+        .container.mx-auto {
+            padding-left: 0.5rem;
+            padding-right: 0.5rem;
+        }
+        .card {
+            border-radius: 1rem;
+        }
+        .table {
+            font-size: 0.95rem;
+        }
+        @media (max-width: 640px) {
+            .text-5xl { font-size: 2rem; }
+            .text-3xl { font-size: 1.25rem; }
+            .text-2xl { font-size: 1.1rem; }
+            .card-body { padding: 1rem; }
+            .gpt-ticker-text { font-size: 1rem; }
+            .table thead { display: none; }
+            .table tr { display: block; margin-bottom: 1rem; border-bottom: 1px solid #eee; }
+            .table td { display: block, text-align: right, position: relative, padding-left: 50%, min-height: 2.2em; }
+            .table td:before {
+                position: absolute;
+                left: 0.75rem;
+                top: 0;
+                width: 45%;
+                white-space: nowrap;
+                font-weight: bold;
+                text-align: left;
+                content: attr(data-label);
+                color: #888;
+            }
+        }
+    </style>
+{% endblock %}
+
 {% block content %}
 <!-- Trading Terminal Header -->
 <div class="bg-base-300 text-base-content p-2 text-sm font-mono">
@@ -183,12 +225,18 @@
                 <table class="table w-full">
                     <thead>
                         <tr class="bg-base-200">
-                            <th class="bg-base-200">Stock</th>
-                            <th class="bg-base-200">Sector</th>
+                            <th class="bg-base-200">
+                                Stock<br>
+                                <span style="font-size:80%; font-weight:normal; color:#888;">(Sector)</span>
+                            </th>
                             <th class="bg-base-200">Quantity</th>
-                            <th class="bg-base-200">Avg. Price</th>
-                            <th class="bg-base-200">Current Price</th>
+                            <th class="bg-base-200">
+                                Current Price<br>
+                                <span style="font-size:80; font-weight:normal; color:#888;">(Average Price)</span>
+                            </th>
                             <th class="bg-base-200">P&L</th>
+                            <th class="bg-base-200">Today P&L</th>
+                            <th class="bg-base-200">Trade</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -199,13 +247,27 @@
                                 {% set current_price = data['current_price'] %}
                                 {% set pl = ((current_price - avg_price) * quantity) | round(2) %}
                                 <tr class="hover:bg-base-200 transition-colors duration-200">
-                                    <td class="font-medium">{{ stock }}</td>
-                                    <td>{{ symbol_to_sector[stock] if symbol_to_sector[stock] is defined else 'Unknown' }}</td>
+                                    <td class="font-medium">
+                                        {{ stock }}
+                                        <br>
+                                        <span style="font-size:80%; color:#888;">({{ symbol_to_sector[stock] if symbol_to_sector[stock] is defined else 'Unknown' }})</span>
+                                    </td>
                                     <td>{{ quantity }}</td>
-                                    <td>₹{{ "{:,.2f}".format(avg_price) }}</td>
-                                    <td>₹{{ "{:,.2f}".format(current_price) }}</td>
+                                    <td>
+                                        ₹{{ "{:,.2f}".format(current_price) }}
+                                        <br>
+                                        <span style="font-size:80%; color:#888;">(₹{{ "{:,.2f}".format(avg_price) }})</span>
+                                    </td>
                                     <td class="{{ 'text-success' if pl > 0 else 'text-error' }} font-bold">
                                         ₹{{ "{:,.2f}".format(pl) }} ({{ "{:.2f}".format(pl / (avg_price * quantity) * 100 if avg_price * quantity else 0) }}%)
+                                    </td>
+                                    <td>
+                                        {% set today_pnl = data['day_change'] if data['day_change'] is defined else 0 %}
+                                        <span class="{{ 'text-success' if today_pnl > 0 else 'text-error' if today_pnl < 0 else '' }} font-bold">₹{{ "{:,.2f}".format(today_pnl) }}</span>
+                                    </td>
+                                    <td>
+                                        <button class="btn btn-xs btn-success mr-1" onclick="openOrderPopup({{ stock|tojson }}, 'BUY', '{{ current_price }}')">+</button>
+                                        <button class="btn btn-xs btn-error" onclick="openOrderPopup({{ stock|tojson }}, 'SELL', '{{ current_price }}')">-</button>
                                     </td>
                                 </tr>
                             {% endfor %}
@@ -286,6 +348,74 @@
     });
     </script>
 </div>
+
+<!-- Order Popup Modal -->
+<div id="order-popup" class="fixed inset-0 flex items-center justify-center bg-black bg-opacity-40 z-50 hidden">
+    <div class="bg-base-100 rounded-lg shadow-lg p-6 w-full max-w-xs relative">
+        <button class="absolute top-2 right-2 btn btn-xs btn-circle" onclick="closeOrderPopup()">✕</button>
+        <h3 class="text-lg font-bold mb-2" id="order-popup-title">Place Order</h3>
+        <form id="order-form" method="post" action="{{ url_for('dashboard.place_order') }}">
+            <input type="hidden" name="stock" id="order-stock">
+            <input type="hidden" name="side" id="order-side">
+            <div class="mb-2">
+                <label class="block text-sm font-medium">Stock</label>
+                <input type="text" id="order-stock-display" class="input input-bordered w-full" readonly>
+            </div>
+            <div class="mb-2">
+                <label class="block text-sm font-medium">Side</label>
+                <input type="text" id="order-side-display" class="input input-bordered w-full" readonly>
+            </div>
+            <div class="mb-2">
+                <label class="block text-sm font-medium">Quantity</label>
+                <input type="number" name="quantity" id="order-quantity" class="input input-bordered w-full" min="1" required>
+            </div>
+            <div class="mb-2">
+                <label class="block text-sm font-medium">Order Type</label>
+                <select name="order_type" id="order-type" class="input input-bordered w-full" onchange="togglePriceInput()">
+                    <option value="LIMIT" selected>Limit</option>
+                    <option value="MARKET">Market</option>
+                </select>
+            </div>
+            <div class="mb-2" id="price-input-group">
+                <label class="block text-sm font-medium">Price</label>
+                <input type="number" name="price" id="order-price" class="input input-bordered w-full" step="0.01" required>
+            </div>
+            <button type="submit" class="btn btn-primary w-full mt-2">Place Order</button>
+        </form>
+    </div>
+</div>
+<script>
+function openOrderPopup(stock, side, price) {
+    document.getElementById('order-popup').classList.remove('hidden');
+    document.getElementById('order-stock').value = stock;
+    document.getElementById('order-side').value = side;
+    document.getElementById('order-stock-display').value = stock;
+    document.getElementById('order-side-display').value = side;
+    document.getElementById('order-quantity').value = '';
+    document.getElementById('order-type').value = 'LIMIT';
+    document.getElementById('order-price').value = price;
+    document.getElementById('order-popup-title').textContent = `${side} Order for ${stock}`;
+    document.getElementById('price-input-group').style.display = '';
+}
+function closeOrderPopup() {
+    document.getElementById('order-popup').classList.add('hidden');
+}
+function togglePriceInput() {
+    const orderType = document.getElementById('order-type').value;
+    const priceGroup = document.getElementById('price-input-group');
+    if (orderType === 'MARKET') {
+        priceGroup.style.display = 'none';
+        document.getElementById('order-price').removeAttribute('required');
+    } else {
+        priceGroup.style.display = '';
+        document.getElementById('order-price').setAttribute('required', 'required');
+    }
+}
+document.getElementById('order-type').addEventListener('change', togglePriceInput);
+document.getElementById('order-form')?.addEventListener('submit', function() {
+    closeOrderPopup();
+});
+</script>
 
 <style>
     .gradient-text {
