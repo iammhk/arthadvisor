@@ -266,8 +266,8 @@
                                         <span class="{{ 'text-success' if today_pnl > 0 else 'text-error' if today_pnl < 0 else '' }} font-bold">₹{{ "{:,.2f}".format(today_pnl) }}</span>
                                     </td>
                                     <td>
-                                        <button class="btn btn-xs btn-success mr-1" onclick="openOrderPopup({{ stock|tojson }}, 'BUY', '{{ current_price }}')">+</button>
-                                        <button class="btn btn-xs btn-error" onclick="openOrderPopup({{ stock|tojson }}, 'SELL', '{{ current_price }}')">-</button>
+                                        <button class="btn btn-xs btn-success mr-1" onclick='openOrderPopup({{ stock|tojson }}, {{ "BUY"|tojson }}, {{ current_price|tojson }})'>+</button>
+                                        <button class="btn btn-xs btn-error" onclick='openOrderPopup({{ stock|tojson }}, {{ "SELL"|tojson }}, {{ current_price|tojson }})'>-</button>
                                     </td>
                                 </tr>
                             {% endfor %}
@@ -306,8 +306,8 @@
                                     <td>{{ rec['30_day_returns'] }}</td>
                                     <td>{{ rec['LTP'] }}</td>
                                     <td>
-                                        <button class="btn btn-xs btn-success mr-1" onclick="openOrderPopup({{ rec['Stock']|tojson }}, 'BUY', '{{ rec['LTP'] }}')">+</button>
-                                        <button class="btn btn-xs btn-error" onclick="openOrderPopup({{ rec['Stock']|tojson }}, 'SELL', '{{ rec['LTP'] }}')">-</button>
+                                        <button class="btn btn-xs btn-success mr-1" onclick='openOrderPopup({{ rec["Stock"]|tojson }}, {{ "BUY"|tojson }}, {{ rec["LTP"]|tojson }})'>+</button>
+                                        <button class="btn btn-xs btn-error" onclick='openOrderPopup({{ rec["Stock"]|tojson }}, {{ "SELL"|tojson }}, {{ rec["LTP"]|tojson }})'>-</button>
                                     </td>
                                 </tr>
                             {% endfor %}
@@ -425,21 +425,33 @@
     </div>
 </div>
 <script>
-function openOrderPopup(stock, side, price) {
-    document.getElementById('order-popup').classList.remove('hidden');
-    document.getElementById('order-stock').value = stock;
-    document.getElementById('order-side').value = side;
-    document.getElementById('order-stock-display').value = stock;
-    document.getElementById('order-side-display').value = side;
-    document.getElementById('order-quantity').value = '';
-    document.getElementById('order-type').value = 'LIMIT';
-    document.getElementById('order-price').value = price;
-    document.getElementById('order-popup-title').textContent = `${side} Order for ${stock}`;
-    document.getElementById('price-input-group').style.display = '';
-}
-function closeOrderPopup() {
-    document.getElementById('order-popup').classList.add('hidden');
-}
+document.addEventListener('DOMContentLoaded', function() {
+    window.openOrderPopup = function(stock, side, price) {
+        console.log('openOrderPopup called with:', stock, side, price); // DEBUG
+        var popup = document.getElementById('order-popup');
+        if (!popup) return;
+        popup.classList.remove('hidden');
+        document.getElementById('order-stock').value = stock;
+        document.getElementById('order-side').value = side;
+        document.getElementById('order-stock-display').value = stock;
+        document.getElementById('order-side-display').value = side;
+        document.getElementById('order-quantity').value = '';
+        document.getElementById('order-type').value = 'LIMIT';
+        document.getElementById('order-price').value = price;
+        document.getElementById('order-popup-title').textContent = `${side} Order for ${stock}`;
+        document.getElementById('price-input-group').style.display = '';
+    }
+    window.closeOrderPopup = function() {
+        var popup = document.getElementById('order-popup');
+        if (popup) popup.classList.add('hidden');
+    }
+    var orderType = document.getElementById('order-type');
+    if(orderType) orderType.addEventListener('change', togglePriceInput);
+    var orderForm = document.getElementById('order-form');
+    if(orderForm) orderForm.addEventListener('submit', function() {
+        closeOrderPopup();
+    });
+});
 function togglePriceInput() {
     const orderType = document.getElementById('order-type').value;
     const priceGroup = document.getElementById('price-input-group');
@@ -451,10 +463,6 @@ function togglePriceInput() {
         document.getElementById('order-price').setAttribute('required', 'required');
     }
 }
-document.getElementById('order-type').addEventListener('change', togglePriceInput);
-document.getElementById('order-form')?.addEventListener('submit', function() {
-    closeOrderPopup();
-});
 </script>
 
 <style>

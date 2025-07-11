@@ -384,12 +384,12 @@ def show_dashboard():
         rec_path = os.path.join(os.path.dirname(__file__), '..', 'predictions', 'aggregate_30day_predictions.csv')
         if os.path.exists(rec_path):
             df = pd.read_csv(rec_path)
-            if 'rank' in df.columns:
-                df = df.sort_values('rank')
+            if 'Rank' in df.columns:
+                df = df.sort_values('Rank')
             # Only keep top 10 (or all if less)
             for _, row in df.head(10).iterrows():
                 top_recommendations.append({
-                    'rank': int(row['rank']) if 'rank' in row else '',
+                    'Rank': int(row['Rank']) if 'Rank' in row else '',
                     'Stock': row['Stock'] if 'Stock' in row else '',
                     '30_day_closing': row['30 day Closing'] if '30 day Closing' in row else '',
                     '30_day_returns': row['30 day returns'] if '30 day returns' in row else '',
