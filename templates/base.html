@@ -93,7 +93,7 @@
                                 {% if current_user.profile_pic %}
                                     <img src="{{ url_for('static', filename=current_user.profile_pic) }}" alt="Profile Picture" class="w-10 h-10 object-cover rounded-full">
                                 {% else %}
-                                    <span class="text-lg font-bold text-primary">{{ (current_user.full_name or current_user.username)[:2]|upper }}</span>
+                                    <span class="text-lg font-bold text-primary w-full h-full flex items-center justify-center" style="line-height:normal;">{{ (current_user.full_name or current_user.username)[:2]|upper }}</span>
                                 {% endif %}
                             </div>
                         </label>

@@ -222,21 +222,22 @@
         <div class="card-body">
             <h2 class="text-3xl font-bold mb-6 gradient-text">Stock Holdings</h2>
             <div class="overflow-x-auto">
-                <table class="table w-full">
+                <table class="table w-full holdings-table">
                     <thead>
                         <tr class="bg-base-200">
                             <th class="bg-base-200">
                                 Stock<br>
                                 <span style="font-size:80%; font-weight:normal; color:#888;">(Sector)</span>
                             </th>
-                            <th class="bg-base-200">Quantity</th>
+                            <th class="bg-base-200" style="width:18%; min-width:110px;">
+                                Quantity<br><span style="font-size:80%; font-weight:normal; color:#888;">Trade</span>
+                            </th>
                             <th class="bg-base-200">
                                 Current Price<br>
                                 <span style="font-size:80; font-weight:normal; color:#888;">(Average Price)</span>
                             </th>
                             <th class="bg-base-200">P&L</th>
                             <th class="bg-base-200">Today P&L</th>
-                            <th class="bg-base-200">Trade</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -252,7 +253,15 @@
                                         <br>
                                         <span style="font-size:80%; color:#888;">({{ symbol_to_sector[stock] if symbol_to_sector[stock] is defined else 'Unknown' }})</span>
                                     </td>
-                                    <td>{{ quantity }}</td>
+                                    <td style="vertical-align:middle;">
+                                        <div class="flex flex-row items-center justify-center gap-2">
+                                            <span>{{ quantity }}</span>
+                                            <div class="flex flex-col items-center gap-1">
+                                                <button class="btn btn-xs btn-success mb-1 trade-btn" style="width:2.2em;" data-stock="{{ stock }}" data-side="BUY" data-price="{{ current_price }}">+</button>
+                                                <button class="btn btn-xs btn-error mt-1 trade-btn" style="width:2.2em;" data-stock="{{ stock }}" data-side="SELL" data-price="{{ current_price }}">-</button>
+                                            </div>
+                                        </div>
+                                    </td>
                                     <td>
                                         ₹{{ "{:,.2f}".format(current_price) }}
                                         <br>
@@ -265,14 +274,10 @@
                                         {% set today_pnl = data['day_change'] if data['day_change'] is defined else 0 %}
                                         <span class="{{ 'text-success' if today_pnl > 0 else 'text-error' if today_pnl < 0 else '' }} font-bold">₹{{ "{:,.2f}".format(today_pnl) }}</span>
                                     </td>
-                                    <td>
-                                        <button class="btn btn-xs btn-success mr-1" onclick='openOrderPopup({{ stock|tojson }}, {{ "BUY"|tojson }}, {{ current_price|tojson }})'>+</button>
-                                        <button class="btn btn-xs btn-error" onclick='openOrderPopup({{ stock|tojson }}, {{ "SELL"|tojson }}, {{ current_price|tojson }})'>-</button>
-                                    </td>
                                 </tr>
                             {% endfor %}
                         {% else %}
-                            <tr><td colspan="6" class="text-error">No holdings data available. Please connect your Zerodha account.</td></tr>
+                            <tr><td colspan="5" class="text-error">No holdings data available. Please connect your Zerodha account.</td></tr>
                         {% endif %}
                     </tbody>
                 </table>
@@ -306,8 +311,8 @@
                                     <td>{{ rec['30_day_returns'] }}</td>
                                     <td>{{ rec['LTP'] }}</td>
                                     <td>
-                                        <button class="btn btn-xs btn-success mr-1" onclick='openOrderPopup({{ rec["Stock"]|tojson }}, {{ "BUY"|tojson }}, {{ rec["LTP"]|tojson }})'>+</button>
-                                        <button class="btn btn-xs btn-error" onclick='openOrderPopup({{ rec["Stock"]|tojson }}, {{ "SELL"|tojson }}, {{ rec["LTP"]|tojson }})'>-</button>
+                                        <button class="btn btn-xs btn-success mr-1 trade-btn" data-stock="{{ rec['Stock'] }}" data-side="BUY" data-price="{{ rec['LTP'] }}">+</button>
+                                        <button class="btn btn-xs btn-error trade-btn" data-stock="{{ rec['Stock'] }}" data-side="SELL" data-price="{{ rec['LTP'] }}">-</button>
                                     </td>
                                 </tr>
                             {% endfor %}
@@ -320,11 +325,17 @@
         </div>
     </div>
 
-    <!-- Chat Dialog Box -->
-    <div class="card bg-base-100 shadow-xl my-8">
-        <div class="card-body">
+    <!-- Floating ArthGPT Button -->
+    <button id="arthgpt-fab" class="fixed bottom-6 right-6 z-50 btn btn-primary btn-circle shadow-lg flex items-center justify-center" style="width:69px; height:69px; font-size:1.1rem;">
+        ArthGPT
+    </button>
+
+    <!-- ArthGPT Chat Popup Modal -->
+    <div id="arthgpt-popup" class="fixed inset-0 flex items-center justify-center bg-black bg-opacity-40 z-50 hidden">
+        <div class="bg-base-100 rounded-lg shadow-lg p-8 w-full max-w-xl relative"> <!-- p-8 for more padding, max-w-xl for 20% larger -->
+            <button class="absolute top-2 right-2 btn btn-xs btn-circle" onclick="closeArthGptPopup()">✕</button>
             <h2 class="text-2xl font-bold mb-4 gradient-text">ArthGPT</h2>
-            <div id="chat-box" class="border rounded p-4 h-64 overflow-y-auto bg-base-200 mb-4" style="min-height: 200px;"></div>
+            <div id="chat-box" class="border rounded p-4 h-80 overflow-y-auto bg-base-200 mb-4" style="min-height: 260px;"></div> <!-- h-80 and min-height larger -->
             <div class="flex">
                 <input id="chat-input" type="text" class="input input-bordered w-full mr-2" placeholder="Ask anything...">
                 <button id="chat-send" class="btn btn-primary">Send</button>
@@ -333,6 +344,15 @@
     </div>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/marked/12.0.1/marked.min.js"></script>
     <script>
+    // ArthGPT popup logic
+    function openArthGptPopup() {
+        document.getElementById('arthgpt-popup').classList.remove('hidden');
+    }
+    function closeArthGptPopup() {
+        document.getElementById('arthgpt-popup').classList.add('hidden');
+    }
+    document.getElementById('arthgpt-fab').addEventListener('click', openArthGptPopup);
+
     const chatBox = document.getElementById('chat-box');
     const chatInput = document.getElementById('chat-input');
     const chatSend = document.getElementById('chat-send');
@@ -387,86 +407,25 @@
         if (e.key === 'Enter') chatSend.click();
     });
     </script>
-</div>
-
-<!-- Order Popup Modal -->
-<div id="order-popup" class="fixed inset-0 flex items-center justify-center bg-black bg-opacity-40 z-50 hidden">
-    <div class="bg-base-100 rounded-lg shadow-lg p-6 w-full max-w-xs relative">
-        <button class="absolute top-2 right-2 btn btn-xs btn-circle" onclick="closeOrderPopup()">✕</button>
-        <h3 class="text-lg font-bold mb-2" id="order-popup-title">Place Order</h3>
-        <form id="order-form" method="post" action="{{ url_for('dashboard.place_order') }}">
-            <input type="hidden" name="stock" id="order-stock">
-            <input type="hidden" name="side" id="order-side">
-            <div class="mb-2">
-                <label class="block text-sm font-medium">Stock</label>
-                <input type="text" id="order-stock-display" class="input input-bordered w-full" readonly>
-            </div>
-            <div class="mb-2">
-                <label class="block text-sm font-medium">Side</label>
-                <input type="text" id="order-side-display" class="input input-bordered w-full" readonly>
-            </div>
-            <div class="mb-2">
-                <label class="block text-sm font-medium">Quantity</label>
-                <input type="number" name="quantity" id="order-quantity" class="input input-bordered w-full" min="1" required>
-            </div>
-            <div class="mb-2">
-                <label class="block text-sm font-medium">Order Type</label>
-                <select name="order_type" id="order-type" class="input input-bordered w-full" onchange="togglePriceInput()">
-                    <option value="LIMIT" selected>Limit</option>
-                    <option value="MARKET">Market</option>
-                </select>
-            </div>
-            <div class="mb-2" id="price-input-group">
-                <label class="block text-sm font-medium">Price</label>
-                <input type="number" name="price" id="order-price" class="input input-bordered w-full" step="0.01" required>
-            </div>
-            <button type="submit" class="btn btn-primary w-full mt-2">Place Order</button>
-        </form>
-    </div>
-</div>
-<script>
-document.addEventListener('DOMContentLoaded', function() {
-    window.openOrderPopup = function(stock, side, price) {
-        console.log('openOrderPopup called with:', stock, side, price); // DEBUG
-        var popup = document.getElementById('order-popup');
-        if (!popup) return;
-        popup.classList.remove('hidden');
-        document.getElementById('order-stock').value = stock;
-        document.getElementById('order-side').value = side;
-        document.getElementById('order-stock-display').value = stock;
-        document.getElementById('order-side-display').value = side;
-        document.getElementById('order-quantity').value = '';
-        document.getElementById('order-type').value = 'LIMIT';
-        document.getElementById('order-price').value = price;
-        document.getElementById('order-popup-title').textContent = `${side} Order for ${stock}`;
-        document.getElementById('price-input-group').style.display = '';
+    <style>
+    #arthgpt-fab {
+        border-radius: 50px;
+        box-shadow: 0 4px 16px rgba(0,0,0,0.18);
+        font-weight: 600;
+        letter-spacing: 0.02em;
+        padding: 0;
+        min-width: 56px;
+        min-height: 56px;
+        height: 56px;
+        width: 56px;
+        transition: background 0.2s, box-shadow 0.2s;
     }
-    window.closeOrderPopup = function() {
-        var popup = document.getElementById('order-popup');
-        if (popup) popup.classList.add('hidden');
+    #arthgpt-fab:hover {
+        background: #0072ff;
+        color: #fff;
+        box-shadow: 0 8px 24px rgba(0,0,0,0.22);
     }
-    var orderType = document.getElementById('order-type');
-    if(orderType) orderType.addEventListener('change', togglePriceInput);
-    var orderForm = document.getElementById('order-form');
-    if(orderForm) orderForm.addEventListener('submit', function() {
-        closeOrderPopup();
-    });
-});
-function togglePriceInput() {
-    const orderType = document.getElementById('order-type').value;
-    const priceGroup = document.getElementById('price-input-group');
-    if (orderType === 'MARKET') {
-        priceGroup.style.display = 'none';
-        document.getElementById('order-price').removeAttribute('required');
-    } else {
-        priceGroup.style.display = '';
-        document.getElementById('order-price').setAttribute('required', 'required');
-    }
-}
-</script>
-
-<style>
-    .gradient-text {
+    #arthgpt-popup .gradient-text {
         background: linear-gradient(90deg, #00C6FF, #0072FF, #8733FF, #FF5C7D, #FF00C6);
         -webkit-background-clip: text;
         -webkit-text-fill-color: transparent;
@@ -500,5 +459,79 @@ function togglePriceInput() {
         0% { transform: translateX(100%); }
         100% { transform: translateX(-100%); }
     }
-</style>
+    /* Increase font size for Holdings table by 50% */
+    .holdings-table th,
+    .holdings-table td {
+        font-size: 1.2rem !important;
+    }
+    .holdings-table .btn-xs {
+        font-size: 1.1rem !important;
+        padding: 0.4em 0.7em !important;
+    }
+    .holdings-table th:nth-child(2),
+    .holdings-table td:nth-child(2) {
+        width: 25% !important;
+        min-width: 130px;
+        text-align: center !important;
+    }
+    </style>
+    <!-- Buy/Sell Trade Modal -->
+<div id="trade-modal" class="fixed inset-0 flex items-center justify-center bg-black bg-opacity-40 z-50 hidden">
+    <div class="bg-base-100 rounded-lg shadow-lg p-6 w-full max-w-md relative">
+        <button class="absolute top-2 right-2 btn btn-xs btn-circle" onclick="closeTradeModal()">✕</button>
+        <h2 class="text-xl font-bold mb-4" id="trade-modal-title">Trade</h2>
+        <form id="trade-form">
+            <div class="mb-4">
+                <label class="block text-sm font-medium mb-1">Stock</label>
+                <input id="trade-stock" name="stock" class="input input-bordered w-full" readonly>
+            </div>
+            <div class="mb-4">
+                <label class="block text-sm font-medium mb-1">Side</label>
+                <input id="trade-side" name="side" class="input input-bordered w-full" readonly>
+            </div>
+            <div class="mb-4">
+                <label class="block text-sm font-medium mb-1">Price</label>
+                <input id="trade-price" name="price" class="input input-bordered w-full" readonly>
+            </div>
+            <div class="mb-4">
+                <label class="block text-sm font-medium mb-1">Quantity</label>
+                <input id="trade-qty" name="quantity" type="number" min="1" class="input input-bordered w-full" value="1" required>
+            </div>
+            <button type="submit" class="btn btn-primary w-full">Place Order</button>
+        </form>
+    </div>
+</div>
+<script>
+// Trade Modal logic
+function openTradeModal(stock, side, price) {
+    document.getElementById('trade-stock').value = stock;
+    document.getElementById('trade-side').value = side;
+    document.getElementById('trade-price').value = price;
+    document.getElementById('trade-qty').value = 1;
+    document.getElementById('trade-modal-title').textContent = `${side} ${stock}`;
+    document.getElementById('trade-modal').classList.remove('hidden');
+}
+function closeTradeModal() {
+    document.getElementById('trade-modal').classList.add('hidden');
+}
+document.addEventListener('DOMContentLoaded', function() {
+    document.body.addEventListener('click', function(e) {
+        const btn = e.target.closest('.trade-btn');
+        if (btn) {
+            const stock = btn.getAttribute('data-stock');
+            const side = btn.getAttribute('data-side');
+            const price = btn.getAttribute('data-price');
+            openTradeModal(stock, side, price);
+        }
+    });
+    // Optional: handle form submit (AJAX or normal post)
+    document.getElementById('trade-form').onsubmit = function(ev) {
+        ev.preventDefault();
+        // You can add AJAX order placement here
+        closeTradeModal();
+        alert('Order placed!');
+    };
+});
+</script>
+<!-- Remove old chat card from main dashboard -->
 {% endblock %}
